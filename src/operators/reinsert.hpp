@@ -7,6 +7,11 @@
 
 // TODO: split up the file
 
+
+// random number generator
+std::random_device rd;
+std::mt19937 gen(rd());
+
 class BaseOperator
 {
 public:
@@ -349,8 +354,6 @@ std::pair<int, std::vector<call_id_t>> calculate_insertion_cost(call_id_t call, 
 std::vector<call_id_t> remove_calls(SolutionManipulator& manipulator, int num_elements)
 {
     std::vector<call_id_t> removed_calls;
-    std::random_device rd;
-    std::mt19937 g(rd());
 
     while (removed_calls.size() < num_elements)
     {
@@ -372,8 +375,6 @@ std::vector<call_id_t> remove_calls(SolutionManipulator& manipulator, int num_el
 
 void greedy_insert(std::vector<call_id_t> calls, SolutionManipulator &manipulator)
 {
-    std::random_device rd;
-    std::mt19937 g(rd());
     auto& problem = manipulator.solution.problem.get();
  
     std::vector<std::vector<std::pair<int, std::vector<call_id_t>>>> costs; // costs[c][v] is the cost of inserting call c into vehicle v
@@ -394,7 +395,7 @@ void greedy_insert(std::vector<call_id_t> calls, SolutionManipulator &manipulato
         }
     }
 
-    std::shuffle(calls.begin(), calls.end(), g);
+    std::shuffle(calls.begin(), calls.end(), gen);
 
     while (calls.size() > 0)
     {
@@ -430,8 +431,6 @@ std::pair<int, call_id_t> select_best_geom(std::vector<std::pair<double, call_id
         return option.first == INT_MAX;
     }), options.end());
 
-    std::random_device rd;
-    std::mt19937 gen(rd());
     std::geometric_distribution<> d(prob);
     int index = d(gen) % options.size();
     return options[index];
@@ -444,8 +443,6 @@ std::pair<int, call_id_t> select_best(std::vector<std::pair<int, call_id_t>> opt
 
 void regret_insert(std::vector<call_id_t> calls, SolutionManipulator &manipulator)
 {
-    std::random_device rd;
-    std::mt19937 g(rd());
     auto& problem = manipulator.solution.problem.get();
  
     std::vector<std::vector<std::pair<int, std::vector<call_id_t>>>> costs; // costs[c][v] is the cost of inserting call c into vehicle v
@@ -466,7 +463,7 @@ void regret_insert(std::vector<call_id_t> calls, SolutionManipulator &manipulato
         }
     }
 
-    std::shuffle(calls.begin(), calls.end(), g);
+    std::shuffle(calls.begin(), calls.end(), gen);
 
     while (calls.size() > 0)
     {
@@ -561,8 +558,6 @@ double similarity_score(call_id_t call_1_id, call_id_t call_2_id, SolutionManipu
 std::vector<call_id_t> remove_similar_vehicles(SolutionManipulator& manipulator, int num_elements)
 {
     std::vector<call_id_t> removed_calls;
-    std::random_device rd;
-    std::mt19937 g(rd());
 
     call_id_t first_call = rand() % manipulator.solution.problem.get().n_calls + 1;
     std::vector<std::pair<double, call_id_t>> distances;
@@ -594,8 +589,6 @@ std::vector<call_id_t> remove_similar_vehicles(SolutionManipulator& manipulator,
 std::vector<call_id_t> remove_full_vehicles(SolutionManipulator& manipulator, int num_elements)
 {
     std::vector<call_id_t> removed_calls;
-    std::random_device rd;
-    std::mt19937 g(rd());
 
     call_id_t first_call = rand() % manipulator.solution.problem.get().n_calls + 1;
     std::vector<std::pair<double, call_id_t>> distances; // rename to scores?
@@ -681,8 +674,6 @@ public:
 
     void apply() override
     {
-        std::random_device rd;
-        std::mt19937 gen(rd());
         std::uniform_int_distribution<> dis(0, operators.size() - 1);
         int random_index = dis(gen);
         operators[random_index]->apply();
@@ -704,8 +695,6 @@ public:
 
     void apply() override
     {
-        std::random_device rd;
-        std::mt19937 gen(rd());
         std::discrete_distribution<> dis(weights.begin(), weights.end());
         int random_index = dis(gen);
         operators[random_index]->apply();
