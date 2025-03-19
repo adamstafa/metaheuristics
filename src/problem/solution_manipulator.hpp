@@ -64,6 +64,7 @@ public:
         {
             solution.push_call(vehicle, plan[i]);          
         }
+        // solution.set_vehicle_plan(vehicle, plan);
     }
 
     void commit()

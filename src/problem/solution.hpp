@@ -19,6 +19,8 @@ public:
     int cost;
     bool feasible;
 
+    Frame() {}
+
     Frame(int arrival_time, int departure_time, int remaining_capacity, call_id_t call, int cost, bool feasible)
         : arrival_time(arrival_time), departure_time(departure_time), remaining_capacity(remaining_capacity), call(call), cost(cost), feasible(feasible)
     {
@@ -72,6 +74,38 @@ public:
         Frame new_frame(arrival_time, departure_time, remaining_capacity, call_id, cost, feasible);
         plan.push_back(new_frame);
         // plan.emplace_back(arrival_time, departure_time, remaining_capacity, call_id, cost, feasible);
+    }
+
+    void add_many(std::vector<call_id_t> calls)
+    {
+        int offset = plan.size();
+        plan.resize(plan.size() + calls.size());
+
+        for (int i = 0; i < calls.size(); i++)
+        {
+            auto call_id = calls[i];
+            auto& call = problem.get().get_call(call_id);
+            auto& prev = plan[offset + i - 1];
+            auto& curr = plan[offset + i];
+            int travel_time = problem.get().travel_time(prev.call, call_id);
+            int travel_cost = problem.get().travel_cost(prev.call, call_id);
+
+
+            curr.arrival_time = prev.departure_time + travel_time;
+            curr.departure_time = std::max(curr.arrival_time, call.window_low) + call.processing_time;
+            curr.remaining_capacity = prev.remaining_capacity - call.size;
+            curr.call = call_id;
+            curr.cost = prev.cost + travel_cost + call.processing_cost;
+            curr.feasible = prev.feasible
+                && curr.remaining_capacity >= 0
+                && curr.arrival_time <= call.window_high
+                && call.compatible;
+        }
+    }
+
+    void remove_many(int n)
+    {
+        plan.resize(plan.size() - n);
     }
 
     void remove_call()
@@ -176,6 +210,63 @@ public:
         plan_cost = plan_cost - prev_cost + sol.cost();
         feasible_count = feasible_count - prev_feasible + sol.feasible();
     };
+
+    void set_vehicle_plan(vehicle_id_t vehicle, const std::vector<call_id_t>& calls)
+    {
+        auto &sol = *vehicle_solutions[vehicle - 1];
+
+        int prev_cost = sol.cost();
+        bool prev_feasible = sol.feasible();
+        
+        int same = 0;
+        while (same < calls.size() && same < sol.num_calls() && abs(sol.plan[same + 1].call) == calls[same])
+        {
+            same++;
+        }
+
+        for (int i = same; i < sol.num_calls(); i++)
+        {
+            auto call = sol.plan[i + 1].call;
+            if (call > 0)
+            {
+                picked_up[abs(call)] = 0;
+            }
+            else
+            {
+                delivered[abs(call)] = 0;
+                no_transport_cost += problem.get().no_transport_cost[abs(call)];
+            }
+        }
+
+        std::vector<call_id_t> calls_to_insert(calls.size() - same);
+        for (int i = 0; i < calls.size() - same; i++)
+        {
+            call_id_t call = calls[same + i];
+            call_id_t call_to_insert;
+            if (picked_up[call] == 0)
+            {
+                assert(delivered[call] == 0);
+                call_to_insert = call;
+                picked_up[call] = vehicle;
+            }
+            else
+            {
+                assert(picked_up[call] == vehicle);
+                assert(delivered[call] == 0);
+                call_to_insert = -call;
+                delivered[call] = vehicle;
+                no_transport_cost -= problem.get().no_transport_cost[call];
+            }
+            calls_to_insert[i] = call_to_insert;
+        }
+
+
+        sol.remove_many(sol.num_calls() - same);
+        sol.add_many(calls_to_insert);
+        
+        plan_cost = plan_cost - prev_cost + sol.cost();
+        feasible_count = feasible_count - prev_feasible + sol.feasible();
+    }
 
     void clone_vehicle_solution(vehicle_id_t vehicle)
     {
