@@ -22,11 +22,19 @@ public:
     Frame(int arrival_time, int departure_time, int remaining_capacity, call_id_t call, int cost, bool feasible)
         : arrival_time(arrival_time), departure_time(departure_time), remaining_capacity(remaining_capacity), call(call), cost(cost), feasible(feasible)
     {
+        // std::cout << "Constructor called\n";
     }
 
-    Frame(const Frame &other)
+    Frame(const Frame& other)
         : arrival_time(other.arrival_time), departure_time(other.departure_time), remaining_capacity(other.remaining_capacity), call(other.call), cost(other.cost), feasible(other.feasible)
     {
+        // std::cout << "Copy Constructor called\n";
+    }
+
+    Frame(Frame&& other) noexcept
+        : arrival_time(other.arrival_time), departure_time(other.departure_time), remaining_capacity(other.remaining_capacity), call(other.call), cost(other.cost), feasible(other.feasible) 
+    {
+        // std::cout << "Move Constructor called\n";
     }
 };
 
@@ -46,26 +54,24 @@ public:
 
     void add_call(call_id_t call_id)
     {
-        Frame &last = plan.back();
-        Frame new_frame(last);
-        auto &call = problem.get().get_call(call_id);
-
+        const auto& last = plan.back();
+        const auto& call = problem.get().get_call(call_id);
         int travel_time = problem.get().travel_time(last.call, call_id);
         int travel_cost = problem.get().travel_cost(last.call, call_id);
 
-        new_frame.arrival_time = last.departure_time + travel_time;
-        new_frame.departure_time = std::max(new_frame.arrival_time, call.window_low) + call.processing_time;
-        new_frame.remaining_capacity -= call.size;
-        new_frame.call = call_id;
-        new_frame.cost += travel_cost + call.processing_cost;
-        new_frame.feasible = last.feasible
-            && new_frame.remaining_capacity >= 0
-            // && new_frame.arrival_time >= call.window_low
-            && new_frame.arrival_time <= call.window_high
+        int arrival_time = last.departure_time + travel_time;
+        int departure_time = std::max(arrival_time, call.window_low) + call.processing_time;
+        int remaining_capacity = last.remaining_capacity - call.size;
+        int cost = last.cost + travel_cost + call.processing_cost;
+        bool feasible = last.feasible
+            && remaining_capacity >= 0
+            && arrival_time <= call.window_high
             && call.compatible;
-        // TODO: consider storing debug information such as within_window or reason for incompatibility
 
+        // TODO: why is this faster than emplace_back???
+        Frame new_frame(arrival_time, departure_time, remaining_capacity, call_id, cost, feasible);
         plan.push_back(new_frame);
+        // plan.emplace_back(arrival_time, departure_time, remaining_capacity, call_id, cost, feasible);
     }
 
     void remove_call()
