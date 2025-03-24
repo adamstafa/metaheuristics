@@ -27,16 +27,16 @@ public:
         for (int i = 1; i <= solution.problem.get().n_calls; i++)
         {
             calls[0].push_back(i);
-            calls[0].push_back(i);
+            calls[0].push_back(-i);
         }
     };
 
     void set_plan(vehicle_id_t vehicle, std::vector<call_id_t> plan)
     {
-        for (auto call : plan)
-        {
-            assert(call > 0 && call <= solution.problem.get().n_calls);
-        }
+        // for (auto call : plan)
+        // {
+        //     assert(call > 0 && call <= solution.problem.get().n_calls);
+        // }
 
         calls[vehicle] = plan;
         if (vehicle == 0)
@@ -49,22 +49,22 @@ public:
         // TODO: optimize - no need to remove everything, maybe we can just save VehicleSolution and restore the rest of variables...
         // TODO: I don't understand the previous comment lol
 
-        int same = 0;
-        auto& vs = solution.vehicle_solution(vehicle);
-        while (same < plan.size() && same < vs.num_calls() && vs.plan[same + 1].call == plan[same])
-        {
-            same++;
-        }
+        // int same = 0;
+        // auto& vs = solution.vehicle_solution(vehicle);
+        // while (same < plan.size() && same < vs.num_calls() && vs.plan[same + 1].call == plan[same])
+        // {
+        //     same++;
+        // }
 
-        while (solution.vehicle_solution(vehicle).num_calls() > same)
-        {
-            solution.pop_call(vehicle);
-        };
-        for (int i = same; i < plan.size(); i++)
-        {
-            solution.push_call(vehicle, plan[i]);          
-        }
-        // solution.set_vehicle_plan(vehicle, plan);
+        // while (solution.vehicle_solution(vehicle).num_calls() > same)
+        // {
+        //     solution.pop_call(vehicle);
+        // };
+        // for (int i = same; i < plan.size(); i++)
+        // {
+        //     solution.push_call(vehicle, plan[i]);
+        // }
+        solution.set_vehicle_plan(vehicle, plan);
     }
 
     void commit()
@@ -97,7 +97,7 @@ public:
         std::string result = "[";
         for (size_t i = 0; i < joined_calls.size(); ++i)
         {
-            result += std::to_string(joined_calls[i]);
+            result += std::to_string(abs(joined_calls[i]));
             if (i != joined_calls.size() - 1)
             {
                 result += ", ";

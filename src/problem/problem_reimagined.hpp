@@ -77,15 +77,15 @@ class ProblemReimagined
 public:
     int n_vehicles;
     int n_calls;
-    std::vector<int> no_transport_cost; // calls 1 ... n_calls
+    std::vector<int> no_transport_costs; // calls 1 ... n_calls
     std::vector<VehicleProblemReimagined> vehicle_problems;
 
     ProblemReimagined(Problem problem)
-        : n_vehicles(problem.n_vehicles), n_calls(problem.n_calls), no_transport_cost(problem.n_calls + 1), vehicle_problems(problem.n_vehicles + 1)
+        : n_vehicles(problem.n_vehicles), n_calls(problem.n_calls), no_transport_costs(problem.n_calls + 1), vehicle_problems(problem.n_vehicles + 1)
     {
         for (call_id_t i = 1; i <= n_calls; i++)
         {
-            no_transport_cost[i] = problem.calls[i].no_transport_cost; // TODO: maybe off by one
+            no_transport_costs[i] = problem.calls[i].no_transport_cost;
         }
 
         for (vehicle_id_t v = 1; v <= n_vehicles; v++)
@@ -109,6 +109,13 @@ public:
             VehicleProblemReimagined vehicle_problem{v, capacity, starting_call, starting_time, n_calls, calls, problem.travel_times[v], problem.travel_costs[v]};
             vehicle_problems[v] = vehicle_problem;
         }
+    }
+
+    int no_transport_cost(call_id_t call)
+    {
+        if (call < 0)
+            return no_transport_costs[abs(call)];
+        return 0;
     }
 };
 

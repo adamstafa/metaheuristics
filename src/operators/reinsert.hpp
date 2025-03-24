@@ -22,131 +22,6 @@ public:
     virtual void apply() = 0;
 };
 
-class Remove : public BaseOperator
-{
-public:
-    int removed_call;
-    bool success;
-
-    Remove(SolutionManipulator& manipulator) : BaseOperator(manipulator) {}
-
-    void apply() override
-    {
-        int vehicle = -1;
-        if (rand() % 100 <= 30)
-        {
-            vehicle = 0;
-        }
-        else
-        {
-            while (vehicle == -1)
-            {
-                int call = (rand() % manipulator.solution.problem.get().n_calls) + 1;
-                // if (std::find(manipulator.calls[0].begin(), manipulator.calls[0].end(), call) != manipulator.calls[0].end())
-                // {
-                //     continue;
-                // }
-                for (int i = 0; i <= manipulator.solution.problem.get().n_vehicles; i++)
-                {
-                    if (std::find(manipulator.calls[i].begin(), manipulator.calls[i].end(), call) != manipulator.calls[i].end())
-                        vehicle = i;
-                }
-            }
-        }
-        auto calls = manipulator.calls[vehicle];
-        if (!calls.empty())
-        {
-            int index = rand() % calls.size();
-            removed_call = calls[index];
-            calls.erase(std::remove(calls.begin(), calls.end(), removed_call), calls.end());
-            success = true;
-        }
-        else
-        {
-            success = false;
-        }
-        manipulator.set_plan(vehicle, calls);
-    }
-};
-
-class Insert : public BaseOperator
-{
-public:
-    Insert(SolutionManipulator& manipulator) : BaseOperator(manipulator) {}
-
-    void apply() override
-    {
-    }
-
-    void apply(int call)
-    {
-        bool success = false; // of finding compatible vehicle
-        while (!success)
-        {
-            int vehicle = (rand() % manipulator.solution.problem.get().n_vehicles) + 1;
-            auto calls = manipulator.calls[vehicle];
-            if (manipulator.solution.vehicle_solution(vehicle).problem.get().get_call(call).compatible)
-            {
-                success = true;
-            }
-            else
-            {
-                continue;
-            }
-            int index1 = rand() % (calls.size() + 1);
-            int index2 = rand() % (calls.size() + 1);
-            calls.insert(calls.begin() + index1, call);
-            calls.insert(calls.begin() + index2, call);
-            manipulator.set_plan(vehicle, calls);
-        }
-    }
-};
-
-class Reinsert : public BaseOperator
-{
-public:
-    Remove remove;
-    Insert insert;
-    
-    Reinsert(SolutionManipulator& manipulator) : BaseOperator(manipulator), remove(manipulator), insert(manipulator) {}
-
-    void apply() override
-    {
-        remove.apply();
-        if (remove.success)
-            insert.apply(remove.removed_call);
-    }
-};
-
-class Retry : public BaseOperator 
-{
-public:
-    std::unique_ptr<BaseOperator> op;
-    int n_attempts;
-
-    Retry(std::unique_ptr<BaseOperator> op, int n_attempts) : BaseOperator(op->manipulator), op(std::move(op)), n_attempts(n_attempts)
-    {}
-    
-    void apply() override
-    {
-        for (int i = 0; i < n_attempts; i++)
-        {
-            manipulator.begin();
-            op->apply();
-            
-            if (manipulator.solution.valid() && manipulator.solution.feasible())
-            {
-                manipulator.commit();
-                return;
-            }
-            else
-            {
-                manipulator.rollback();
-            }
-        }
-    }
-};
-
 class Sequence : public BaseOperator
 {
 public:
@@ -240,11 +115,6 @@ public:
         for (auto& vs : manipulator.solution.vehicle_solutions)
         {
             auto best_permutation = compute_best_permutation(*vs).second;
-            for (size_t i = 0; i < best_permutation.size(); ++i)
-            {
-                best_permutation[i] = std::abs(best_permutation[i]);
-            }
-
             manipulator.set_plan(vs->vehicle, best_permutation);
         }
     }
@@ -268,7 +138,7 @@ std::pair<int, std::vector<call_id_t>> calculate_insertion_cost_all_permutations
         auto calls = manipulator.calls[0];
         calls.push_back(call);
         calls.push_back(call);
-        return {manipulator.solution.problem.get().no_transport_cost[call], calls};
+        return {manipulator.solution.problem.get().no_transport_costs[call], calls};
     }
 
     VehicleSolution vs{vehicle, manipulator.solution.problem.get().vehicle_problems[vehicle]};
@@ -288,10 +158,6 @@ std::pair<int, std::vector<call_id_t>> calculate_insertion_cost_all_permutations
 
     compute_best_insertion_place(vs, calls, current, best);
     int cost = best.first - manipulator.solution.vehicle_solution(vehicle).cost();
-    for (size_t i = 0; i < best.second.size(); ++i)
-    {
-        best.second[i] = std::abs(best.second[i]);
-    }
 
     return {cost, best.second};
 }
@@ -304,49 +170,52 @@ std::pair<int, std::vector<call_id_t>> calculate_insertion_cost(call_id_t call, 
         auto calls = manipulator.calls[0];
         calls.push_back(call);
         calls.push_back(call);
-        return {manipulator.solution.problem.get().no_transport_cost[call], calls};
+        return {manipulator.solution.problem.get().no_transport_costs[call], std::move(calls)};
     }
 
-    VehicleSolution vs{vehicle, manipulator.solution.problem.get().vehicle_problems[vehicle]};
     auto &og_vs = manipulator.solution.vehicle_solution(vehicle);
+    auto og_calls = manipulator.calls[vehicle];
+    if (!og_vs.problem.get().get_call(call).compatible)
+    {
+        return {INT_MAX, {}};
+    }
+
+    std::pair<int, std::vector<call_id_t>> best {INT_MAX, {}};
+    VehicleSolution vs{vehicle, manipulator.solution.problem.get().vehicle_problems[vehicle]};
     std::vector<call_id_t> calls;
     for (int i = 0; i < manipulator.solution.vehicle_solution(vehicle).num_calls(); i++)
     {
         calls.push_back(manipulator.solution.vehicle_solution(vehicle).plan[i+1].call);
     }
 
-    std::pair<int, std::vector<call_id_t>> best;
-    best.first = INT_MAX;
-
-    for (int i = 0; i <= calls.size(); i++)
+    for (int i = 0; i <= calls.size(); i++) // i = number of calls before the first insertion place
     {
-        for (int j = 0; j <= calls.size() - i; j++)
+        for (int j = 0; j <= calls.size() - i; j++) // j = number of calls between the insertion places
         {
             vs.add_call(call);
-            for (int k = 0; k < j; k++)
-                vs.add_call(og_vs.plan[i + k + 1].call);
+            vs.add_many(og_calls.begin() + i, og_calls.begin() + i + j);
             vs.add_call(-call);
-            for (int k = 0; k < calls.size() - i - j; k++)
-                vs.add_call(og_vs.plan[i + j + k + 1].call);
+            vs.add_many(og_calls.begin() + i + j, og_calls.end());
 
             if (vs.feasible() && vs.cost() < best.first)
             {
                 std::vector<call_id_t> new_calls;
                 for (int i = 1; i <= vs.num_calls(); i++)
                 {
-                    new_calls.push_back(std::abs(vs.plan[i].call));
-                }   
-                best = {vs.cost(), new_calls};
+                    new_calls.push_back(vs.plan[i].call);
+                }
+                best = {vs.cost(), std::move(new_calls)};
             }
 
             while (vs.num_calls() > i)
                 vs.remove_call();
         }
         if (i < calls.size())
-            vs.add_call(og_vs.plan[i + 1].call);
+            vs.add_call(og_calls[i]);
     }
 
 
+    // subtract original cost of the vehicle - we care how much more expensive the solution becomes
     best.first -= manipulator.solution.vehicle_solution(vehicle).cost();
     return best;
 }
@@ -364,9 +233,10 @@ std::vector<call_id_t> remove_calls(SolutionManipulator& manipulator, int num_el
         
         int index = rand() % calls.size();
         call_id_t removed_call = calls[index];
-        assert(removed_call > 0);
-        calls.erase(std::remove(calls.begin(), calls.end(), removed_call), calls.end());
-        removed_calls.push_back(removed_call);
+        calls.erase(std::remove_if(calls.begin(), calls.end(), [removed_call](call_id_t c) {
+            return abs(c) == abs(removed_call);
+        }), calls.end());
+        removed_calls.push_back(abs(removed_call));
         manipulator.set_plan(vehicle, calls);
     }
 
@@ -476,25 +346,13 @@ void regret_insert(std::vector<call_id_t> calls, SolutionManipulator &manipulato
             regret.push_back(call_costs[1].first - call_costs[0].first);
         }
 
-        // int best_regret = INT_MIN;
-        // call_id_t best_call = -1;
-        // for (int i = 0; i < calls.size(); i++)
-        // {
-        //     auto call = calls[i];
-        //     if (regret[i] > best_regret)
-        //     {
-        //         best_regret = regret[i];
-        //         best_call = call;
-        //     }
-        // }
         std::vector<std::pair<double, call_id_t>> options;
         for (int i = 0; i < calls.size(); i++)
         {
             options.push_back({-regret[i], calls[i]});
         }
 
-        call_id_t best_call = select_best_geom(options, 0.5).second;
-        // call_id_t best_call = select_best(options).second;
+        call_id_t best_call = select_best_geom(options, 0.5).second;        
 
         vehicle_id_t best_vehicle;
         std::pair<int, std::vector<call_id_t>> best_plan;
@@ -510,7 +368,9 @@ void regret_insert(std::vector<call_id_t> calls, SolutionManipulator &manipulato
 
         manipulator.set_plan(best_vehicle, best_plan.second);
 
-        calls.erase(std::remove(calls.begin(), calls.end(), best_call), calls.end());
+        calls.erase(std::remove_if(calls.begin(), calls.end(), [best_call](call_id_t c) {
+            return abs(c) == abs(best_call);
+        }), calls.end());
 
         for (auto c : calls)
         {
@@ -570,16 +430,18 @@ std::vector<call_id_t> remove_similar_vehicles(SolutionManipulator& manipulator,
     {
         call_id_t call = select_best_geom(distances, 0.2).second;
         distances.erase(std::remove_if(distances.begin(), distances.end(), [call](const std::pair<int, call_id_t>& p) {
-            return p.second == call;
+            return abs(p.second) == abs(call);
         }), distances.end());
-        removed_calls.push_back(call);
+        removed_calls.push_back(abs(call));
     }
 
     for (auto removed_call : removed_calls)
     {
         vehicle_id_t vehicle = manipulator.get_vehicle_for_call(removed_call);
         auto calls = manipulator.calls[vehicle];
-        calls.erase(std::remove(calls.begin(), calls.end(), removed_call), calls.end());
+        calls.erase(std::remove_if(calls.begin(), calls.end(), [removed_call](call_id_t c) {
+            return abs(c) == abs(removed_call);
+        }), calls.end());
         manipulator.set_plan(vehicle, calls);
     }
 
@@ -603,16 +465,18 @@ std::vector<call_id_t> remove_full_vehicles(SolutionManipulator& manipulator, in
     {
         call_id_t call = select_best_geom(distances, 0.05).second;
         distances.erase(std::remove_if(distances.begin(), distances.end(), [call](const std::pair<int, call_id_t>& p) {
-            return p.second == call;
+            return p.second == call || p.second == -call;
         }), distances.end());
-        removed_calls.push_back(call);
+        removed_calls.push_back(abs(call));
     }
 
     for (auto removed_call : removed_calls)
     {
         vehicle_id_t vehicle = manipulator.get_vehicle_for_call(removed_call);
         auto calls = manipulator.calls[vehicle];
-        calls.erase(std::remove(calls.begin(), calls.end(), removed_call), calls.end());
+        calls.erase(std::remove_if(calls.begin(), calls.end(), [removed_call](call_id_t c) {
+            return abs(c) == abs(removed_call);
+        }), calls.end());
         manipulator.set_plan(vehicle, calls);
     }
 
