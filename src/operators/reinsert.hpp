@@ -163,42 +163,81 @@ std::pair<int, std::vector<call_id_t>> calculate_insertion_cost_all_permutations
 }
 
 
-std::pair<int, std::vector<call_id_t>> calculate_insertion_cost(call_id_t call, vehicle_id_t vehicle, SolutionManipulator manipulator)
+std::pair<int, std::vector<call_id_t>> calculate_insertion_cost(call_id_t call_id, vehicle_id_t vehicle, SolutionManipulator manipulator)
 {
     if (vehicle == 0)
     {
         auto calls = manipulator.calls[0];
-        calls.push_back(call);
-        calls.push_back(call);
-        return {manipulator.solution.problem.get().no_transport_costs[call], std::move(calls)};
+        calls.push_back(call_id);
+        calls.push_back(-call_id);
+        return {manipulator.solution.problem.get().no_transport_costs[call_id], std::move(calls)};
     }
 
     auto &og_vs = manipulator.solution.vehicle_solution(vehicle);
-    auto og_calls = manipulator.calls[vehicle];
-    if (!og_vs.problem.get().get_call(call).compatible)
+    if (!og_vs.problem.get().get_call(call_id).compatible)
     {
         return {INT_MAX, {}};
     }
 
     std::pair<int, std::vector<call_id_t>> best {INT_MAX, {}};
     VehicleSolution vs{vehicle, manipulator.solution.problem.get().vehicle_problems[vehicle]};
+    auto& pickup = vs.problem.get().get_call(call_id);
+    auto& delivery = vs.problem.get().get_call(-call_id);
     std::vector<call_id_t> calls;
     for (int i = 0; i < manipulator.solution.vehicle_solution(vehicle).num_calls(); i++)
     {
-        calls.push_back(manipulator.solution.vehicle_solution(vehicle).plan[i+1].call);
+        calls.push_back(manipulator.solution.vehicle_solution(vehicle).plan[i+1].call); // now it's just manipulator.calls[vehicle]
+    }
+
+    std::vector<int> latest_arrival(calls.size());
+    int last = INT_MAX;
+    for (int i = calls.size() - 1; i >= 0; i--)
+    {
+        last = std::min(last, vs.problem.get().get_call(calls[i]).window_high);
+        latest_arrival[i] = last;
     }
 
     for (int i = 0; i <= calls.size(); i++) // i = number of calls before the first insertion place
     {
+        vs.remove_many(vs.num_calls());
+        vs.add_many(calls.begin(), calls.begin() + i);
+
+        if (vs.plan.back().departure_time > pickup.window_high || vs.plan.back().departure_time > delivery.window_high)
+        {
+            break;
+        }
+
+        vs.add_call(call_id);
+    
+        if (i < calls.size() && vs.plan.back().departure_time > latest_arrival[i])
+        {
+            continue;
+        }
+
         for (int j = 0; j <= calls.size() - i; j++) // j = number of calls between the insertion places
         {
-            vs.add_call(call);
-            vs.add_many(og_calls.begin() + i, og_calls.begin() + i + j);
-            vs.add_call(-call);
-            vs.add_many(og_calls.begin() + i + j, og_calls.end());
+            vs.remove_many(vs.num_calls());
+            vs.add_many(calls.begin(), calls.begin() + i);
+            vs.add_call(call_id);
+            vs.add_many(calls.begin() + i, calls.begin() + i + j);
+
+            if (vs.plan.back().departure_time > delivery.window_high)
+            {
+                break;
+            }
+
+            vs.add_call(-call_id);
+
+            if ((i + j) < calls.size() && vs.plan.back().departure_time > latest_arrival[i + j])
+            {
+                continue;
+            }
+
+            vs.add_many(calls.begin() + i + j, calls.end());
 
             if (vs.feasible() && vs.cost() < best.first)
             {
+                // save found solution
                 std::vector<call_id_t> new_calls;
                 for (int i = 1; i <= vs.num_calls(); i++)
                 {
@@ -206,14 +245,8 @@ std::pair<int, std::vector<call_id_t>> calculate_insertion_cost(call_id_t call, 
                 }
                 best = {vs.cost(), std::move(new_calls)};
             }
-
-            while (vs.num_calls() > i)
-                vs.remove_call();
         }
-        if (i < calls.size())
-            vs.add_call(og_calls[i]);
     }
-
 
     // subtract original cost of the vehicle - we care how much more expensive the solution becomes
     best.first -= manipulator.solution.vehicle_solution(vehicle).cost();
