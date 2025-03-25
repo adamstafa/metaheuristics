@@ -37,7 +37,7 @@ class VehicleProblemReimagined
 public:
     vehicle_id_t vehicle_id;
     int vehicle_capacity;
-    int starting_call;
+    call_id_t starting_call;
     int starting_time;
 
     int n_calls;
@@ -103,7 +103,7 @@ public:
                 // pickup
                 calls.push_back(VehicleCallReimagined{c, call.origin_node, vehicle_call.can_pickup, call.pickup_low, call.pickup_high, call.size, vehicle_call.loading_time, vehicle_call.loading_cost});
                 // delivery
-                calls.push_back(VehicleCallReimagined{-c, call.destination_node, vehicle_call.can_pickup, call.delivery_low, call.delivery_high, -call.size, vehicle_call.unloading_time, vehicle_call.unloading_cost});
+                calls.push_back(VehicleCallReimagined{(call_id_t) -c, call.destination_node, vehicle_call.can_pickup, call.delivery_low, call.delivery_high, -call.size, vehicle_call.unloading_time, vehicle_call.unloading_cost});
             }
 
             VehicleProblemReimagined vehicle_problem{v, capacity, starting_call, starting_time, n_calls, calls, problem.travel_times[v], problem.travel_costs[v]};

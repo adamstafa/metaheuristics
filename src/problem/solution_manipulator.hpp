@@ -8,9 +8,9 @@ class ManipulatorFrame
 public:
     
     Solution solution;
-    std::vector<std::vector<int>> calls;
+    std::vector<std::vector<call_id_t>> calls;
 
-    ManipulatorFrame(Solution solution, std::vector<std::vector<int>> calls) : solution(solution), calls(calls)
+    ManipulatorFrame(Solution solution, std::vector<std::vector<call_id_t>> calls) : solution(solution), calls(calls)
     {};
 };
 
@@ -19,7 +19,7 @@ class SolutionManipulator
 {
 public:
     Solution& solution;
-    std::vector<std::vector<int>> calls;
+    std::vector<std::vector<call_id_t>> calls;
     std::vector<ManipulatorFrame> frames;
 
     SolutionManipulator(Solution& solution) : solution(solution), calls(solution.problem.get().n_vehicles + 1), frames()

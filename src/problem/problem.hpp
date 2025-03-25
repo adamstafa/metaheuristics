@@ -13,7 +13,7 @@ class Vehicle
 {
 public:
     vehicle_id_t id;
-    int home_node;
+    node_id_t home_node;
     int starting_time;
     int capacity;
 
