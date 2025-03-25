@@ -199,9 +199,6 @@ std::pair<int, std::vector<call_id_t>> calculate_insertion_cost(call_id_t call_i
 
     for (int i = 0; i <= calls.size(); i++) // i = number of calls before the first insertion place
     {
-        vs.remove_many(vs.num_calls());
-        vs.add_many(calls.begin(), calls.begin() + i);
-
         if (vs.plan.back().departure_time > pickup.window_high || vs.plan.back().departure_time > delivery.window_high)
         {
             break;
@@ -211,16 +208,17 @@ std::pair<int, std::vector<call_id_t>> calculate_insertion_cost(call_id_t call_i
     
         if (i < calls.size() && vs.plan.back().departure_time > latest_arrival[i])
         {
+            vs.remove_many(vs.num_calls() - i);
+            if (i < calls.size())
+            {
+                vs.add_call(calls[i]);
+            }
             continue;
+            // TODO: doing the same thing at the end of the loop
         }
 
         for (int j = 0; j <= calls.size() - i; j++) // j = number of calls between the insertion places
         {
-            vs.remove_many(vs.num_calls());
-            vs.add_many(calls.begin(), calls.begin() + i);
-            vs.add_call(call_id);
-            vs.add_many(calls.begin() + i, calls.begin() + i + j);
-
             if (vs.plan.back().departure_time > delivery.window_high)
             {
                 break;
@@ -230,6 +228,11 @@ std::pair<int, std::vector<call_id_t>> calculate_insertion_cost(call_id_t call_i
 
             if ((i + j) < calls.size() && vs.plan.back().departure_time > latest_arrival[i + j])
             {
+                vs.remove_many(vs.num_calls() - (i + j + 1));
+                if ((i + j) < calls.size())
+                {
+                    vs.add_call(calls[i + j]);
+                }
                 continue;
             }
 
@@ -245,6 +248,18 @@ std::pair<int, std::vector<call_id_t>> calculate_insertion_cost(call_id_t call_i
                 }
                 best = {vs.cost(), std::move(new_calls)};
             }
+
+            vs.remove_many(vs.num_calls() - (i + j + 1));
+            if ((i + j) < calls.size())
+            {
+                vs.add_call(calls[i + j]);
+            }
+        }
+
+        vs.remove_many(vs.num_calls() - i);
+        if (i < calls.size())
+        {
+            vs.add_call(calls[i]);
         }
     }
 
