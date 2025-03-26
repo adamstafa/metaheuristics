@@ -2,3 +2,5 @@
 build
 CMakeFiles
 reports/output
+*.pyc
+*.pyo
