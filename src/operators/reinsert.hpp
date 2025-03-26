@@ -17,7 +17,7 @@ class BaseOperator
 public:
     SolutionManipulator& manipulator;
 
-    BaseOperator(SolutionManipulator& manipulator) : manipulator(manipulator) { srand(time(nullptr));} // TODO: dont initialize random like this
+    BaseOperator(SolutionManipulator& manipulator) : manipulator(manipulator) { srand(time(nullptr)); } // TODO: dont initialize random like this
 
     virtual void apply() = 0;
 };
@@ -38,129 +38,6 @@ public:
         }
     }
 };
-
-void compute_best_insertion_place(VehicleSolution& vs, std::vector<call_id_t>& remaining, std::pair<int, std::vector<call_id_t>>& current, std::pair<int, std::vector<call_id_t>>& best)
-{
-    auto& problem = vs.problem.get();
-    // skip if infeasible
-    if (!vs.feasible())
-    {
-        return ;
-    }
-    // skip if solution can't be finished
-    for (auto rem : remaining)
-    {
-        if (problem.get_call(rem).window_high < vs.plan.back().departure_time)
-        {
-            return;
-        }
-    }
-
-    if (remaining.empty() && vs.feasible() && vs.cost() < best.first)
-    {
-        best = current;
-    }
-
-    for (auto c : remaining)
-    {
-        // not picked up yet
-        if (c < 0 && std::find(remaining.begin(), remaining.end(), -c) != remaining.end())
-        {
-            continue;
-        }
-
-        current.second.push_back(c);
-        
-        std::vector<call_id_t> new_remaining;
-        for (auto rem : remaining)
-        {
-            if (rem != c)
-            {
-            new_remaining.push_back(rem);
-            }
-        }
-
-        vs.add_call(c);
-        compute_best_insertion_place(vs, new_remaining, current, best);
-        vs.remove_call();
-
-        current.second.pop_back();
-    }
-}
-
-std::pair<int, std::vector<call_id_t>> compute_best_permutation(VehicleSolution& vehicle_solution_ref)
-{
-    VehicleSolution vs{vehicle_solution_ref.vehicle, vehicle_solution_ref.problem};
-    std::vector<call_id_t> calls;
-    for (int i = 0; i < vehicle_solution_ref.num_calls(); i++)
-    {
-        calls.push_back(vehicle_solution_ref.plan[i+1].call);
-    }
-    
-    std::pair<int, std::vector<call_id_t>> current, best;
-    best.first = INT_MAX;
-
-    compute_best_insertion_place(vs, calls, current, best);
-
-    return best;
-}
-
-class BestPermutationOperator : public BaseOperator
-{
-public:
-    BestPermutationOperator(SolutionManipulator& manipulator) : BaseOperator(manipulator) {}
-
-    void apply() override
-    {
-        for (auto& vs : manipulator.solution.vehicle_solutions)
-        {
-            auto best_permutation = compute_best_permutation(*vs).second;
-            manipulator.set_plan(vs->vehicle, best_permutation);
-        }
-    }
-};
-
-
-// goal: write greedy reinsert algorithm
-// input: set of several calls
-// for each call...
-//   go through all compatible vehicles
-//   try to insert the calls on all possible places (there will be only a few feasible places, do fast checks)
-//   mark the best places for each call
-//
-// then greedily insert the calls one by one in randomized order
-// 
-
-std::pair<int, std::vector<call_id_t>> calculate_insertion_cost_all_permutations(call_id_t call, vehicle_id_t vehicle, SolutionManipulator manipulator)
-{
-    if (vehicle == 0)
-    {
-        auto calls = manipulator.calls[0];
-        calls.push_back(call);
-        calls.push_back(call);
-        return {manipulator.solution.problem.get().no_transport_costs[call], calls};
-    }
-
-    VehicleSolution vs{vehicle, manipulator.solution.problem.get().vehicle_problems[vehicle]};
-
-    std::vector<call_id_t> calls;
-    for (int i = 0; i < manipulator.solution.vehicle_solution(vehicle).num_calls(); i++)
-    {
-        calls.push_back(manipulator.solution.vehicle_solution(vehicle).plan[i+1].call);
-    }
-
-    // these are signed calls on level of VehicleSolution
-    calls.push_back(call);
-    calls.push_back(-call);
-    
-    std::pair<int, std::vector<call_id_t>> current, best;
-    best.first = INT_MAX;
-
-    compute_best_insertion_place(vs, calls, current, best);
-    int cost = best.first - manipulator.solution.vehicle_solution(vehicle).cost();
-
-    return {cost, best.second};
-}
 
 
 std::pair<int, std::vector<call_id_t>> calculate_insertion_cost(call_id_t call_id, vehicle_id_t vehicle, SolutionManipulator& manipulator)
@@ -201,7 +78,8 @@ std::pair<int, std::vector<call_id_t>> calculate_insertion_cost(call_id_t call_i
             vs.add_call(calls[i - 1]);
         }
 
-        if (vs.plan.back().departure_time > pickup.window_high || vs.plan.back().departure_time > delivery.window_high)
+
+        if (vs.plan.back().departure_time > std::min(pickup.window_high, delivery.window_high))
         {
             break;
         }
@@ -253,7 +131,7 @@ std::pair<int, std::vector<call_id_t>> calculate_insertion_cost(call_id_t call_i
     return std::move(best);
 }
 
-std::vector<call_id_t> remove_calls(SolutionManipulator& manipulator, int num_elements)
+std::vector<call_id_t> remove_calls_randomly(SolutionManipulator& manipulator, int num_elements)
 {
     std::vector<call_id_t> removed_calls;
 
@@ -270,113 +148,80 @@ std::vector<call_id_t> remove_calls(SolutionManipulator& manipulator, int num_el
             return abs(c) == abs(removed_call);
         }), calls.end());
         removed_calls.push_back(abs(removed_call));
-        manipulator.set_plan(vehicle, calls);
+        manipulator.set_plan(vehicle, calls.begin(), calls.end());
     }
 
     return removed_calls;
 }
 
-void greedy_insert(std::vector<call_id_t> calls, SolutionManipulator &manipulator)
-{
-    auto& problem = manipulator.solution.problem.get();
- 
-    std::vector<std::vector<std::pair<int, std::vector<call_id_t>>>> costs; // costs[c][v] is the cost of inserting call c into vehicle v
-    costs.push_back({});
-    for (int c = 1; c <= problem.n_calls; c++)
-    {
-        costs.push_back({});
-        
-        if (std::find(calls.begin(), calls.end(), c) == calls.end())
-        {
-            continue;
-        }
-        // TODO: space wasted in the array
-
-        for (int v = 0; v <= problem.n_vehicles; v++)
-        {
-            costs[c].push_back(calculate_insertion_cost_all_permutations(c, v, manipulator));
-        }
-    }
-
-    std::shuffle(calls.begin(), calls.end(), gen);
-
-    while (calls.size() > 0)
-    {
-        call_id_t call = calls.back();
-        calls.pop_back();
-
-        std::pair<int, std::vector<call_id_t>> best_plan;
-        best_plan.first = INT_MAX;
-        vehicle_id_t best_vehicle = -1;
-
-        for (int v = 0; v <= problem.n_vehicles; v++)
-        {
-            if (costs[call][v] < best_plan)
-            {
-                best_plan = costs[call][v];
-                best_vehicle = v;
-            }
-        }
-
-        manipulator.set_plan(best_vehicle, best_plan.second);
-
-        for (auto c : calls)
-        {
-            costs[c][best_vehicle] = calculate_insertion_cost_all_permutations(c, best_vehicle, manipulator);
-        }
-    }
-}
-
 std::pair<int, call_id_t> select_best_geom(std::vector<std::pair<double, call_id_t>> options, double prob)
 {
-    std::sort(options.begin(), options.end());
     options.erase(std::remove_if(options.begin(), options.end(), [](const std::pair<int, call_id_t>& option) {
         return option.first == INT_MAX;
     }), options.end());
+    std::sort(options.begin(), options.end());
 
     std::geometric_distribution<> d(prob);
     int index = d(gen) % options.size();
     return options[index];
 }
 
-std::pair<int, call_id_t> select_best(std::vector<std::pair<int, call_id_t>> options)
+std::pair<double, call_id_t> select_best(std::vector<std::pair<double, call_id_t>> options)
 {
     return *std::min_element(options.begin(), options.end());
 }
 
-void regret_insert(std::vector<call_id_t> calls, SolutionManipulator &manipulator)
+class RegretInserter
 {
-    auto& problem = manipulator.solution.problem.get();
- 
-    std::vector<std::vector<std::pair<int, std::vector<call_id_t>>>> costs; // costs[c][v] is the cost of inserting call c into vehicle v
-    costs.push_back({});
-    for (int c = 1; c <= problem.n_calls; c++)
+public:
+    SolutionManipulator& manipulator;
+    std::vector<std::vector<int>> costs; // [call][vehicle]
+    std::vector<std::vector<std::vector<call_id_t>>> plans;
+    ProblemReimagined& problem;
+
+    RegretInserter(SolutionManipulator& manipulator) : manipulator(manipulator), costs(), plans(), problem(manipulator.solution.problem.get())
     {
         costs.push_back({});
-        
-        if (std::find(calls.begin(), calls.end(), c) == calls.end())
+        plans.push_back({});
+        for (int c = 1; c <= problem.n_calls; c++)
         {
-            continue;
+            costs.push_back({});
+            plans.push_back({});
+            for (int v = 0; v <= problem.n_vehicles; v++)
+            {
+                costs[c].push_back(INT_MAX);
+                plans[c].push_back({});
+            }
         }
-        // TODO: space wasted in the array
+    };
 
-        for (int v = 0; v <= problem.n_vehicles; v++)
+    void insert(std::vector<call_id_t> calls)
+    {
+        for (auto call : calls)
         {
-            costs[c].push_back(calculate_insertion_cost(c, v, manipulator));
+            for (vehicle_id_t v = 0; v <= problem.n_vehicles; v++)
+            {
+                auto x = calculate_insertion_cost(call, v, manipulator); // TODO: rename
+                costs[call][v] = x.first;
+                plans[call][v] = std::move(x.second);
+            }
+        }
+
+        while (calls.size() > 0)
+        {
+            insert_one(calls);
         }
     }
 
-    std::shuffle(calls.begin(), calls.end(), gen);
-
-    while (calls.size() > 0)
+    void insert_one(std::vector<call_id_t>& calls)
     {
         std::vector<int> regret;
 
         for (auto call : calls)
         {
-            auto call_costs = costs[call];
+            std::vector<int> call_costs = costs[call];
             std::sort(call_costs.begin(), call_costs.end());
-            regret.push_back(call_costs[1].first - call_costs[0].first);
+            regret.push_back(call_costs[1] - call_costs[0]);
         }
 
         std::vector<std::pair<double, call_id_t>> options;
@@ -385,32 +230,38 @@ void regret_insert(std::vector<call_id_t> calls, SolutionManipulator &manipulato
             options.push_back({-regret[i], calls[i]});
         }
 
-        call_id_t best_call = select_best_geom(options, 0.5).second;        
+        call_id_t best_call = select_best_geom(options, 0.5).second;
 
+        int best_cost = INT_MAX;
         vehicle_id_t best_vehicle;
-        std::pair<int, std::vector<call_id_t>> best_plan;
-        best_plan.first = INT_MAX;
+
         for (int v = 0; v <= problem.n_vehicles; v++)
         {
-            if (costs[best_call][v] < best_plan)
+            if (costs[best_call][v] < best_cost)
             {
-                best_plan = costs[best_call][v];
                 best_vehicle = v;
+                best_cost = costs[best_call][v];
             }
         }
 
-        manipulator.set_plan(best_vehicle, best_plan.second);
+        auto& best_plan = plans[best_call][best_vehicle];
+
+        manipulator.set_plan(best_vehicle, best_plan.begin(), best_plan.end());
 
         calls.erase(std::remove_if(calls.begin(), calls.end(), [best_call](call_id_t c) {
             return abs(c) == abs(best_call);
         }), calls.end());
 
-        for (auto c : calls)
+        for (auto call : calls)
         {
-            costs[c][best_vehicle] = calculate_insertion_cost(c, best_vehicle, manipulator);
+            auto x = calculate_insertion_cost(call, best_vehicle, manipulator); // TODO: rename
+            costs[call][best_vehicle] = x.first;
+            plans[call][best_vehicle] = std::move(x.second);
         }
     }
-}
+
+};
+
 
 double similarity_score(call_id_t call_1_id, call_id_t call_2_id, SolutionManipulator& manipulator)
 {
@@ -475,7 +326,7 @@ std::vector<call_id_t> remove_similar_vehicles(SolutionManipulator& manipulator,
         calls.erase(std::remove_if(calls.begin(), calls.end(), [removed_call](call_id_t c) {
             return abs(c) == abs(removed_call);
         }), calls.end());
-        manipulator.set_plan(vehicle, calls);
+        manipulator.set_plan(vehicle, calls.begin(), calls.end());
     }
 
     return removed_calls;
@@ -510,7 +361,7 @@ std::vector<call_id_t> remove_full_vehicles(SolutionManipulator& manipulator, in
         calls.erase(std::remove_if(calls.begin(), calls.end(), [removed_call](call_id_t c) {
             return abs(c) == abs(removed_call);
         }), calls.end());
-        manipulator.set_plan(vehicle, calls);
+        manipulator.set_plan(vehicle, calls.begin(), calls.end());
     }
 
     return removed_calls;
@@ -520,14 +371,15 @@ class ReinsertRandomRegret : public BaseOperator
 {
 public:
     int num_elements;
+    RegretInserter inserter;
 
     ReinsertRandomRegret(SolutionManipulator& manipulator, int num_elements) : BaseOperator(manipulator),
-        num_elements(std::min(num_elements, manipulator.solution.problem.get().n_calls)) {}
+        num_elements(std::min(num_elements, manipulator.solution.problem.get().n_calls)), inserter(manipulator) {}
 
     void apply() override
     {
-        auto removed_calls = remove_calls(manipulator, num_elements);
-        regret_insert(removed_calls, manipulator);
+        auto removed_calls = remove_calls_randomly(manipulator, num_elements);
+        inserter.insert(std::move(removed_calls));
     }
 };
 
@@ -535,14 +387,15 @@ class ReinsertSimilarRegret : public BaseOperator
 {
 public:
     int num_elements;
+    RegretInserter inserter;
 
     ReinsertSimilarRegret(SolutionManipulator& manipulator, int num_elements) : BaseOperator(manipulator),
-        num_elements(std::min(num_elements, manipulator.solution.problem.get().n_calls)) {}
+        num_elements(std::min(num_elements, manipulator.solution.problem.get().n_calls)), inserter(manipulator) {}
 
     void apply() override
     {
         auto removed_calls = remove_similar_vehicles(manipulator, num_elements);
-        regret_insert(removed_calls, manipulator);
+        inserter.insert(std::move(removed_calls));
     }
 };
 
@@ -550,14 +403,15 @@ class ReinsertFullRegret : public BaseOperator
 {
 public:
     int num_elements;
+    RegretInserter inserter;
 
     ReinsertFullRegret(SolutionManipulator& manipulator, int num_elements) : BaseOperator(manipulator),
-        num_elements(std::min(num_elements, manipulator.solution.problem.get().n_calls)) {}
+        num_elements(std::min(num_elements, manipulator.solution.problem.get().n_calls)), inserter(manipulator) {}
 
     void apply() override
     {
         auto removed_calls = remove_full_vehicles(manipulator, num_elements);
-        regret_insert(removed_calls, manipulator);
+        inserter.insert(std::move(removed_calls));
     }
 };
 
@@ -597,4 +451,3 @@ public:
         operators[random_index]->apply();
     }
 };
-

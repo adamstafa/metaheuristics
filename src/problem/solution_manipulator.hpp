@@ -31,40 +31,16 @@ public:
         }
     };
 
-    void set_plan(vehicle_id_t vehicle, std::vector<call_id_t> plan)
+    void set_plan(vehicle_id_t vehicle, std::vector<call_id_t>::const_iterator begin, std::vector<call_id_t>::const_iterator end)
     {
-        // for (auto call : plan)
-        // {
-        //     assert(call > 0 && call <= solution.problem.get().n_calls);
-        // }
-
-        calls[vehicle] = plan;
+        calls[vehicle].assign(begin, end);
         if (vehicle == 0)
         {
             return;
         }
 
         solution.clone_vehicle_solution(vehicle);
-
-        // TODO: optimize - no need to remove everything, maybe we can just save VehicleSolution and restore the rest of variables...
-        // TODO: I don't understand the previous comment lol
-
-        // int same = 0;
-        // auto& vs = solution.vehicle_solution(vehicle);
-        // while (same < plan.size() && same < vs.num_calls() && vs.plan[same + 1].call == plan[same])
-        // {
-        //     same++;
-        // }
-
-        // while (solution.vehicle_solution(vehicle).num_calls() > same)
-        // {
-        //     solution.pop_call(vehicle);
-        // };
-        // for (int i = same; i < plan.size(); i++)
-        // {
-        //     solution.push_call(vehicle, plan[i]);
-        // }
-        solution.set_vehicle_plan(vehicle, plan);
+        solution.set_vehicle_plan(vehicle, begin, end);
     }
 
     void commit()
