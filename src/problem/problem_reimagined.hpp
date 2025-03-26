@@ -25,11 +25,6 @@ public:
     int size;
     int processing_time;
     int processing_cost;
-
-    VehicleCallReimagined(call_id_t id, node_id_t node, bool compatible, int window_low, int window_high, int size, int processing_time, int processing_cost)
-        : id(id), node(node), compatible(compatible), window_low(window_low), window_high(window_high), size(size), processing_time(processing_time), processing_cost(processing_cost)
-    {
-    }
 };
 
 class VehicleProblemReimagined
@@ -58,7 +53,7 @@ public:
 
     VehicleCallReimagined& get_call(call_id_t call_id)
     {
-        return calls[2 * abs(call_id) + (call_id <= 0) - 1];
+        return calls[call_id + n_calls];
     }
 
     int travel_time(call_id_t from, call_id_t to)
@@ -94,19 +89,20 @@ public:
             int starting_call = 0;
             int starting_time = problem.vehicles[v].starting_time;
 
-            std::vector<VehicleCallReimagined> calls;
-            calls.push_back(VehicleCallReimagined{0, problem.vehicles[v].home_node, true, std::numeric_limits<int>::min(), std::numeric_limits<int>::max(), 0, 0, 0}); // fake call id 0
+            std::vector<VehicleCallReimagined> calls(2 * n_calls + 1);
+            VehicleProblemReimagined vehicle_problem{v, capacity, starting_call, starting_time, n_calls, calls, problem.travel_times[v], problem.travel_costs[v]};
+
+            vehicle_problem.get_call(0) = VehicleCallReimagined{0, problem.vehicles[v].home_node, true, std::numeric_limits<int>::min(), std::numeric_limits<int>::max(), 0, 0, 0}; // fake call id 0
             for (call_id_t c = 1; c <= n_calls; c++)
             {
                 auto &call = problem.calls[c];
                 auto &vehicle_call = problem.vehicle_calls[v][c];
                 // pickup
-                calls.push_back(VehicleCallReimagined{c, call.origin_node, vehicle_call.can_pickup, call.pickup_low, call.pickup_high, call.size, vehicle_call.loading_time, vehicle_call.loading_cost});
+                vehicle_problem.get_call(c) = VehicleCallReimagined{c, call.origin_node, vehicle_call.can_pickup, call.pickup_low, call.pickup_high, call.size, vehicle_call.loading_time, vehicle_call.loading_cost};
                 // delivery
-                calls.push_back(VehicleCallReimagined{(call_id_t) -c, call.destination_node, vehicle_call.can_pickup, call.delivery_low, call.delivery_high, -call.size, vehicle_call.unloading_time, vehicle_call.unloading_cost});
+                vehicle_problem.get_call(-c) = VehicleCallReimagined{(call_id_t) -c, call.destination_node, vehicle_call.can_pickup, call.delivery_low, call.delivery_high, -call.size, vehicle_call.unloading_time, vehicle_call.unloading_cost};
             }
 
-            VehicleProblemReimagined vehicle_problem{v, capacity, starting_call, starting_time, n_calls, calls, problem.travel_times[v], problem.travel_costs[v]};
             vehicle_problems[v] = vehicle_problem;
         }
     }
