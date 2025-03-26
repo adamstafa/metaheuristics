@@ -100,8 +100,6 @@ SimulatedAnnealing(ProblemReimagined &problem, SolutionManipulator &manipulator,
         double alpha = std::pow(final_temperature / initial_temperature, 1.0 / (num_iterations - warmup_steps));
 
         double temperature = initial_temperature;
-        int improvement = 0;
-        int randomly = 0;
         for (int i = warmup_steps; i < num_iterations; i++)
         {
             manipulator.begin();
@@ -115,12 +113,10 @@ SimulatedAnnealing(ProblemReimagined &problem, SolutionManipulator &manipulator,
             if (delta < 0)
             {
                 manipulator.commit();
-                improvement++;
             }
             else if(static_cast<float>(rand()) / RAND_MAX < std::exp(- delta / temperature))
             {
                 manipulator.commit();
-                randomly++;
             }
             else
             {
@@ -134,7 +130,5 @@ SimulatedAnnealing(ProblemReimagined &problem, SolutionManipulator &manipulator,
             //     std::cout << i << "\t" << best_cost << std::endl;
             // }
         }
-        // std::cout << "best_cost: " << best_cost << std::endl;
-        // std::cout << "improvement: " << improvement << "\t randomly: " << randomly << std::endl;
     }
 };
