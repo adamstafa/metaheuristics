@@ -48,9 +48,7 @@ public:
         {
             for (vehicle_id_t v = 0; v <= problem.n_vehicles; v++)
             {
-                auto x = calculate_insertion_cost(call, v, manipulator); // TODO: rename
-                costs[call][v] = x.first;
-                plans[call][v] = std::move(x.second);
+                update_costs(call, v);
             }
         }
 
@@ -101,10 +99,15 @@ public:
 
         for (auto call : calls)
         {
-            auto x = calculate_insertion_cost(call, best_vehicle, manipulator); // TODO: rename
-            costs[call][best_vehicle] = x.first;
-            plans[call][best_vehicle] = std::move(x.second);
+            update_costs(call, best_vehicle);
         }
+    }
+
+    void update_costs(call_id_t call, vehicle_id_t vehicle)
+    {
+        auto best_insertion = calculate_insertion_cost(call, vehicle, manipulator);
+        costs[call][vehicle] = best_insertion.first;
+        plans[call][vehicle] = std::move(best_insertion.second);
     }
 
     std::pair<int, std::vector<call_id_t>> calculate_insertion_cost(call_id_t call_id, vehicle_id_t vehicle, SolutionManipulator& manipulator)
@@ -127,7 +130,8 @@ public:
         VehicleSolution vs{vehicle, manipulator.solution.problem.get().vehicle_problems[vehicle]};
         auto& pickup = vs.problem.get().get_call(call_id);
         auto& delivery = vs.problem.get().get_call(-call_id);
-        std::vector<call_id_t> calls = manipulator.calls[vehicle];
+        std::vector<call_id_t>& calls = manipulator.calls[vehicle];
+        vs.reserve(calls.size() + 2);
 
         std::vector<int> latest_arrival(calls.size());
         int last = INT_MAX;
@@ -182,13 +186,12 @@ public:
 
                 if (vs.feasible() && vs.cost() < best.first)
                 {
-                    // save found solution
-                    std::vector<call_id_t> new_calls;
-                    for (int i = 1; i <= vs.num_calls(); i++)
+                    best.first = vs.cost();
+                    best.second.resize(vs.num_calls());
+                    for (int i = 0; i < vs.num_calls(); i++)
                     {
-                        new_calls.push_back(vs.plan[i].call);
+                        best.second[i] = vs.plan[i + 1].call;
                     }
-                    best = {vs.cost(), std::move(new_calls)};
                 }
             }
         }

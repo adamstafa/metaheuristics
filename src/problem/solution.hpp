@@ -115,6 +115,11 @@ public:
         plan.pop_back();
     }
 
+    void reserve(int n)
+    {
+        plan.reserve(n + 1);
+    }
+
     int cost()
     {
         return plan.back().cost;
