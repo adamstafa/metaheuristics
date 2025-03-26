@@ -11,37 +11,6 @@
 #include "problem_reimagined.hpp"
 
 
-// class Frame
-// {
-// public:
-//     // int arrival_time;
-//     int departure_time;
-//     int remaining_capacity;
-//     call_id_t call;
-//     int cost;
-//     bool feasible;
-
-//     Frame() {}
-
-//     Frame(int arrival_time, int departure_time, int remaining_capacity, call_id_t call, int cost, bool feasible)
-//         : /*arrival_time(arrival_time),*/ departure_time(departure_time), remaining_capacity(remaining_capacity), call(call), cost(cost), feasible(feasible)
-//     {
-//         // std::cout << "Constructor called\n";
-//     }
-
-//     Frame(const Frame& other)
-//         : /*arrival_time(other.arrival_time),*/ departure_time(other.departure_time), remaining_capacity(other.remaining_capacity), call(other.call), cost(other.cost), feasible(other.feasible)
-//     {
-//         // std::cout << "Copy Constructor called\n";
-//     }
-
-//     Frame(Frame&& other) noexcept
-//         : /*arrival_time(other.arrival_time),*/ departure_time(other.departure_time), remaining_capacity(other.remaining_capacity), call(other.call), cost(other.cost), feasible(other.feasible) 
-//     {
-//         // std::cout << "Move Constructor called\n";
-//     }
-// };
-
 class Frame
 {
 public:
@@ -112,34 +81,6 @@ public:
         plan.push_back(new_frame);
     }
 
-    void add_many(std::vector<call_id_t> calls)
-    {
-        add_many(calls.begin(), calls.end());
-        // int offset = plan.size();
-        // plan.resize(plan.size() + calls.size());
-
-        // for (int i = 0; i < calls.size(); i++)
-        // {
-        //     auto call_id = calls[i];
-        //     auto& call = problem.get().get_call(call_id);
-        //     auto& prev = plan[offset + i - 1];
-        //     auto& curr = plan[offset + i];
-        //     int travel_time = problem.get().travel_time(prev.call, call_id);
-        //     int travel_cost = problem.get().travel_cost(prev.call, call_id);
-
-
-        //     curr.arrival_time = prev.departure_time + travel_time;
-        //     curr.departure_time = std::max(curr.arrival_time, call.window_low) + call.processing_time;
-        //     curr.remaining_capacity = prev.remaining_capacity - call.size;
-        //     curr.call = call_id;
-        //     curr.cost = prev.cost + travel_cost + call.processing_cost;
-        //     curr.feasible = prev.feasible
-        //         && curr.remaining_capacity >= 0
-        //         && curr.arrival_time <= call.window_high
-        //         && call.compatible;
-        // }
-    }
-
     void add_many(std::vector<call_id_t>::const_iterator begin, std::vector<call_id_t>::const_iterator end)
     {
         int offset = plan.size();
@@ -175,8 +116,22 @@ public:
     {
         for (int i = 0; i < n; i++)
         {
-            remove_call();
+            auto& call = problem.get().get_call(_last_call);
+            auto& prev = plan[plan.size() - i - 2];
+            auto& curr = plan[plan.size() - i - 1];
+            int travel_time = problem.get().travel_time(prev.call, curr.call);
+            int travel_cost = problem.get().travel_cost(prev.call, curr.call);
+
+            _departure_time = prev.departure_time;
+            _remaining_capacity += call.size;
+            _cost -= travel_cost + call.processing_cost;
+            _last_call = prev.call;
+            if (plan.size() - i == _feasible_size)
+            {
+                _feasible_size--;
+            }
         }
+        plan.resize(plan.size() - n);
     }
 
     void remove_call()
@@ -197,6 +152,11 @@ public:
         }
         plan.pop_back();
     }
+    
+    void reserve(int n)
+    {
+        plan.reserve(n + 1);
+    }
 
     int cost()
     {
@@ -213,4 +173,3 @@ public:
         return plan.size() - 1;
     }
 };
-
