@@ -50,9 +50,23 @@ public:
 };
 
 class SimilarVehiclesRemover : BaseRemover
-{
+{    
 public:
-    SimilarVehiclesRemover(SolutionManipulator& manipulator, int num_elements) : BaseRemover(manipulator, num_elements) {}
+    std::vector<std::vector<double>> similarities;
+
+    SimilarVehiclesRemover(SolutionManipulator& manipulator, int num_elements) : BaseRemover(manipulator, num_elements), similarities()
+    {
+        similarities.push_back({});
+        for (call_id_t call_1 = 1; call_1 <= manipulator.solution.problem.get().n_calls; call_1++)
+        {
+            similarities.push_back({});
+            similarities[call_1].push_back({});
+            for (call_id_t call_2 = 1; call_2 <= manipulator.solution.problem.get().n_calls; call_2++)
+            {
+                similarities[call_1].push_back(similarity_score(call_1, call_2));
+            }
+        }
+    }
 
     std::vector<call_id_t> remove()
     {
@@ -62,7 +76,7 @@ public:
         std::vector<std::pair<double, call_id_t>> distances;
         for (call_id_t call = 1; call <= manipulator.solution.problem.get().n_calls; call++)
         {
-            distances.push_back({similarity_score(first_call, call, manipulator), call});
+            distances.push_back({similarities[first_call][call], call});
         }
 
         while (removed_calls.size() < num_elements)
@@ -87,7 +101,7 @@ public:
         return removed_calls;
     }
     
-    double similarity_score(call_id_t call_1_id, call_id_t call_2_id, SolutionManipulator& manipulator)
+    double similarity_score(call_id_t call_1_id, call_id_t call_2_id)
     {
         auto& solution = manipulator.solution;
         auto& problem = solution.problem.get();
