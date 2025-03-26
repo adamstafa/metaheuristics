@@ -8,17 +8,25 @@
 #include "selection.hpp"
 #include "rng.hpp"
 
-
-
-class RegretInserter
+class BaseInserter
 {
 public:
     SolutionManipulator& manipulator;
+
+    BaseInserter(SolutionManipulator& manipulator) : manipulator(manipulator) {}
+
+    virtual void insert(std::vector<call_id_t> calls) = 0;
+};
+
+
+class RegretInserter : BaseInserter
+{
+public:
     std::vector<std::vector<int>> costs; // [call][vehicle]
     std::vector<std::vector<std::vector<call_id_t>>> plans;
     ProblemReimagined& problem;
 
-    RegretInserter(SolutionManipulator& manipulator) : manipulator(manipulator), costs(), plans(), problem(manipulator.solution.problem.get())
+    RegretInserter(SolutionManipulator& manipulator) : BaseInserter(manipulator), costs(), plans(), problem(manipulator.solution.problem.get())
     {
         costs.push_back({});
         plans.push_back({});

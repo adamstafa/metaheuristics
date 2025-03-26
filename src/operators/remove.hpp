@@ -8,16 +8,24 @@
 #include "insert.hpp"
 #include "rng.hpp"
 
-class RandomRemover
+class BaseRemover
 {
 public:
     SolutionManipulator& manipulator;
     int num_elements;
 
-    RandomRemover(SolutionManipulator& manipulator, int num_elements)
+    BaseRemover(SolutionManipulator& manipulator, int num_elements)
         : manipulator(manipulator), num_elements(num_elements) {}
 
-    std::vector<call_id_t> remove()
+    virtual std::vector<call_id_t> remove() = 0;
+};
+
+class RandomRemover : BaseRemover
+{
+public:
+    RandomRemover(SolutionManipulator& manipulator, int num_elements) : BaseRemover(manipulator, num_elements) {}
+
+    std::vector<call_id_t> remove() override
     {
         std::vector<call_id_t> removed_calls;
 
@@ -41,14 +49,10 @@ public:
     }
 };
 
-class SimilarVehiclesRemover
+class SimilarVehiclesRemover : BaseRemover
 {
 public:
-    SolutionManipulator& manipulator;
-    int num_elements;
-
-    SimilarVehiclesRemover(SolutionManipulator& manipulator, int num_elements)
-        : manipulator(manipulator), num_elements(num_elements) {}
+    SimilarVehiclesRemover(SolutionManipulator& manipulator, int num_elements) : BaseRemover(manipulator, num_elements) {}
 
     std::vector<call_id_t> remove()
     {
@@ -119,14 +123,10 @@ public:
     }
 };
 
-class FullVehiclesRemover
+class FullVehiclesRemover : BaseRemover
 {
 public:
-    SolutionManipulator& manipulator;
-    int num_elements;
-
-    FullVehiclesRemover(SolutionManipulator& manipulator, int num_elements)
-        : manipulator(manipulator), num_elements(num_elements) {}
+    FullVehiclesRemover(SolutionManipulator& manipulator, int num_elements) : BaseRemover(manipulator, num_elements) {}
 
     std::vector<call_id_t> remove()
     {

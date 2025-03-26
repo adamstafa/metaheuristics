@@ -16,20 +16,26 @@ class BaseOperator
 public:
     SolutionManipulator& manipulator;
 
-    BaseOperator(SolutionManipulator& manipulator) : manipulator(manipulator) { srand(time(nullptr)); } // TODO: dont initialize random like this
+    BaseOperator(SolutionManipulator& manipulator) : manipulator(manipulator)
+    {
+        srand(time(nullptr));  // TODO: dont initialize random like this
+    }
 
     virtual void apply() = 0;
 };
 
-class ReinsertRandomRegret : public BaseOperator
+
+template <typename RemoverType, typename InserterType>
+class ReinsertOperator : public BaseOperator
 {
 public:
-    int num_elements;
-    RandomRemover remover;
-    RegretInserter inserter;
+    RemoverType remover;
+    InserterType inserter;
 
-    ReinsertRandomRegret(SolutionManipulator& manipulator, int num_elements) : BaseOperator(manipulator),
-        num_elements(std::min(num_elements, manipulator.solution.problem.get().n_calls)), inserter(manipulator), remover(manipulator, this->num_elements) {}
+    ReinsertOperator(SolutionManipulator& manipulator, int num_elements) 
+        : BaseOperator(manipulator),
+          inserter(manipulator), 
+          remover(manipulator, std::min(num_elements, manipulator.solution.problem.get().n_calls)) {}
 
     void apply() override
     {
@@ -38,39 +44,9 @@ public:
     }
 };
 
-class ReinsertSimilarRegret : public BaseOperator
-{
-public:
-    int num_elements;
-    SimilarVehiclesRemover remover;
-    RegretInserter inserter;
-
-    ReinsertSimilarRegret(SolutionManipulator& manipulator, int num_elements) : BaseOperator(manipulator),
-        num_elements(std::min(num_elements, manipulator.solution.problem.get().n_calls)), inserter(manipulator), remover(manipulator, this->num_elements) {}
-
-    void apply() override
-    {
-        auto removed_calls = remover.remove();
-        inserter.insert(std::move(removed_calls));
-    }
-};
-
-class ReinsertFullRegret : public BaseOperator
-{
-public:
-    int num_elements;
-    FullVehiclesRemover remover;
-    RegretInserter inserter;
-
-    ReinsertFullRegret(SolutionManipulator& manipulator, int num_elements) : BaseOperator(manipulator),
-        num_elements(std::min(num_elements, manipulator.solution.problem.get().n_calls)), inserter(manipulator), remover(manipulator, this->num_elements) {}
-
-    void apply() override
-    {
-        auto removed_calls = remover.remove();
-        inserter.insert(std::move(removed_calls));
-    }
-};
+using ReinsertRandomRegret = ReinsertOperator<RandomRemover, RegretInserter>;
+using ReinsertSimilarRegret = ReinsertOperator<SimilarVehiclesRemover, RegretInserter>;
+using ReinsertFullRegret = ReinsertOperator<FullVehiclesRemover, RegretInserter>;
 
 class Sequence : public BaseOperator
 {
