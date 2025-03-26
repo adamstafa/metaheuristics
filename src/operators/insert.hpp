@@ -120,7 +120,7 @@ public:
             return {manipulator.solution.problem.get().no_transport_costs[call_id], std::move(calls)};
         }
 
-        auto &og_vs = manipulator.solution.vehicle_solution(vehicle);
+        auto& og_vs = manipulator.solution.vehicle_solution(vehicle);
         if (!og_vs.problem.get().get_call(call_id).compatible)
         {
             return {INT_MAX, {}};
