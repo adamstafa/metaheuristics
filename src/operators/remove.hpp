@@ -31,13 +31,12 @@ public:
 
         while (removed_calls.size() < num_elements)
         {
-            int vehicle = (rand() % 100 <= 20) ? 0 : ((rand() % manipulator.solution.problem.get().n_vehicles) + 1);
-            auto calls = manipulator.calls[vehicle];
-            if (calls.size() == 0)
+            int removed_call = gen() %  manipulator.solution.problem.get().n_calls + 1;
+            if (std::find(removed_calls.begin(), removed_calls.end(), abs(removed_call)) != removed_calls.end())
                 continue;
-            
-            int index = rand() % calls.size();
-            call_id_t removed_call = calls[index];
+
+            int vehicle = manipulator.get_vehicle_for_call(removed_call);
+            auto calls = manipulator.calls[vehicle];
             calls.erase(std::remove_if(calls.begin(), calls.end(), [removed_call](call_id_t c) {
                 return abs(c) == abs(removed_call);
             }), calls.end());

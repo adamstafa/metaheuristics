@@ -9,8 +9,6 @@
 #include "remove.hpp"
 #include "rng.hpp"
 
-// TODO: split up the file
-
 class BaseOperator
 {
 public:
