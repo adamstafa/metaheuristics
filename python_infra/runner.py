@@ -40,10 +40,11 @@ class Solver:
             assert count == 2
 
     def solve(self):
-        w1 = 0.25
-        w2 = 0.6
-        w3 = 0.15
-        proc = os.popen(f'{self.solver_path} {self.problem_path} {w1} {w2} {w3}')
+        # w1 = 0.25
+        # w2 = 0.6
+        # w3 = 0.15
+        # proc = os.popen(f'{self.solver_path} {self.problem_path} {w1} {w2} {w3}')
+        proc = os.popen(f'{self.solver_path} {self.problem_path}')
         output = proc.read().strip()
         sol = [ int(x) for x in output[1:-1].split(',') ]
         return sol
@@ -85,6 +86,6 @@ if __name__ == '__main__':
     for problem in problems:
         print(f'{problem}')
         def f(i):
-            Solver('data', problem, i, 'simulated_annealing_operators_tuned').run()
+            Solver('data', problem, i, 'alns').run()
         with Pool(10) as p:
             p.map(f, range(10))

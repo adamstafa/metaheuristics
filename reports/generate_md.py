@@ -26,9 +26,10 @@ algorithms = {
     'simulated_annealing': 'Simulated Annealing -- 1-insert',
     'simulated_annealing_operators_untuned': 'SA -- new operators (equal weights)',
     'simulated_annealing_operators_tuned': 'SA -- new operators (tuned weights)',
+    'alns': 'Adaptive Algorithm',
 }
 
-new_algos = {'simulated_annealing_operators_untuned', 'simulated_annealing_operators_tuned'}
+new_algos = {'alns'}
 
 def parse_run(problem, algo):
     runs = []
@@ -65,7 +66,7 @@ def process_problem(problem, f):
     print( "|       -       |                -: |               -: |                -: |               -: |", file=f)
     for algo, algo_name in algorithms.items():
         avg_objective, best_objective, best_solution, run_time, improvement = process_problem_algo(problem, algo)
-        print(f"| {algo_name} | {avg_objective} | {best_objective} | {improvement:.2f} | {run_time:.0f} |", file=f)
+        print(f"| {algo_name} | {avg_objective} | {best_objective} | {improvement:.2f} | {run_time:.2f} |", file=f)
         if algo in new_algos:
             best_pool.append((best_objective, best_solution))
     print(file=f)
@@ -78,7 +79,7 @@ def process_problem(problem, f):
     print(file=f)
 
 with open("output/output.md", "w") as f:
-    print("# INF273 - Assignment 4", file=f)
+    print("# INF273 - Assignment 5", file=f)
     print("Adam Štafa", file=f)
     print(file=f)
     for problem in problems:
