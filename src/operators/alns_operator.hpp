@@ -115,19 +115,20 @@ public:
         int new_cost = manipulator.solution.cost();
         int delta = std::min(new_cost - prev_cost, 0);
 
-
+        bool seen = seen_costs.find(new_cost) != seen_costs.end();
         int score = 0;
-        if (seen_costs.find(new_cost) == seen_costs.end())
-        {
-            score = 1;
-        }
-        if (delta < 0)
-        {
-            score = 2;
-        }
+
         if (new_cost < best_cost)
         {
             score = 4;
+        }
+        else if (delta < 0 && !seen)
+        {
+            score = 2;
+        }
+        else if (!seen)
+        {
+            score = 1;
         }
         
         
@@ -182,18 +183,20 @@ public:
         int new_cost = manipulator.solution.cost();
         int delta = std::min(new_cost - prev_cost, 0);
 
+        bool seen = seen_costs.find(new_cost) != seen_costs.end();
         int score = 0;
-        if (seen_costs.find(new_cost) == seen_costs.end())
-        {
-            score = 1;
-        }
-        if (delta < 0)
-        {
-            score = 2;
-        }
+
         if (new_cost < best_cost)
         {
             score = 4;
+        }
+        else if (delta < 0 && !seen)
+        {
+            score = 2;
+        }
+        else if (!seen)
+        {
+            score = 1;
         }
 
 
