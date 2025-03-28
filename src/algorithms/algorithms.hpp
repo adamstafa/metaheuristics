@@ -3,6 +3,7 @@
 #include "../problem/solution_manipulator.hpp"
 #include "../problem/problem.hpp"
 #include "../operators/reinsert.hpp"
+#include "../operators/all_permutations.hpp"
 #include <cassert>
 #include <cmath>
 
@@ -55,9 +56,12 @@ class SimulatedAnnealing : BaseAlgorithm // TODO: remember the best achieved sol
 {
 public:
     int warmup_steps;
+    Solution best_solution;
+    int no_improvement_steps = 0;
+    int escape_steps = 5000;
 
 SimulatedAnnealing(ProblemReimagined &problem, SolutionManipulator &manipulator, BaseOperator &op, int warmup_steps)
-        : BaseAlgorithm(problem, manipulator, op), warmup_steps(warmup_steps) {}
+        : BaseAlgorithm(problem, manipulator, op), warmup_steps(warmup_steps), best_solution(problem) {}
 
     void run(int num_iterations) override
     {
@@ -108,19 +112,48 @@ SimulatedAnnealing(ProblemReimagined &problem, SolutionManipulator &manipulator,
             op.apply();
             int delta = manipulator.solution.cost() - old_cost;
 
-            best_cost = std::min(best_cost, manipulator.solution.cost());
+            if (manipulator.solution.cost() < best_cost)
+            {
+                best_cost = manipulator.solution.cost();
+                best_solution = manipulator.solution;
+                no_improvement_steps = 0;
+            }
 
             if (delta < 0)
             {
                 manipulator.commit();
+                // no_improvement_steps = 0;
             }
             else if(static_cast<float>(rand()) / RAND_MAX < std::exp(- delta / temperature))
             {
                 manipulator.commit();
+                no_improvement_steps ++;
             }
             else
             {
                 manipulator.rollback();
+                no_improvement_steps ++;
+            }
+
+            if (no_improvement_steps > escape_steps)
+            {
+                // TODO: pass escape operator as a parameter
+                // ReinsertOperator<FullVehiclesRemover, RandomInserter> escape_op(manipulator, problem.n_calls / 5);
+                // BestPermutationOperator best_permutation_op(manipulator);
+                ReinsertOperator<RandomRemover, RegretInserter> escape_op(manipulator, 10);
+
+                // std::cout << "Escaping" << std::endl;
+                // std::cout << "Before escape: "<< manipulator.solution.cost() << std::endl;
+                for (int i = 0; i < 10; i++)
+                    escape_op.apply();
+                // std::cout << "Mid escape: "<< manipulator.solution.cost() << std::endl;
+                // best_permutation_op.apply();
+                // std::cout << "After escape: "<< manipulator.solution.cost() << std::endl;
+                // std::cout << manipulator.python_string() << std::endl;
+
+                no_improvement_steps = 0;
+                best_cost = manipulator.solution.cost();
+
             }
 
             temperature *= alpha;
