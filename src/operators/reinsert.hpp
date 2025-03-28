@@ -23,21 +23,37 @@ public:
 };
 
 
+class BaseReinserter : public BaseOperator
+{
+public:
+    BaseReinserter(SolutionManipulator& manipulator) : BaseOperator(manipulator) {}
+
+    virtual void apply(int num_elements) = 0;
+
+};
+
 template <typename RemoverType, typename InserterType>
-class ReinsertOperator : public BaseOperator
+class ReinsertOperator : public BaseReinserter
 {
 public:
     RemoverType remover;
     InserterType inserter;
+    int num_elements;
 
-    ReinsertOperator(SolutionManipulator& manipulator, int num_elements) 
-        : BaseOperator(manipulator),
+    ReinsertOperator(SolutionManipulator& manipulator, int num_elements=0) 
+        : BaseReinserter(manipulator),
           inserter(manipulator), 
-          remover(manipulator, std::min(num_elements, manipulator.solution.problem.get().n_calls)) {}
+          remover(manipulator),
+          num_elements(std::min(num_elements, manipulator.solution.problem.get().n_calls)){}
 
     void apply() override
     {
-        auto removed_calls = remover.remove();
+        apply(num_elements);
+    }
+
+    void apply(int num_elements) override
+    {
+        auto removed_calls = remover.remove(num_elements);
         inserter.insert(std::move(removed_calls));
     }
 };

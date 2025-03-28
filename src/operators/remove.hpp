@@ -12,20 +12,19 @@ class BaseRemover
 {
 public:
     SolutionManipulator& manipulator;
-    int num_elements;
 
-    BaseRemover(SolutionManipulator& manipulator, int num_elements)
-        : manipulator(manipulator), num_elements(num_elements) {}
+    BaseRemover(SolutionManipulator& manipulator)
+        : manipulator(manipulator) {}
 
-    virtual std::vector<call_id_t> remove() = 0;
+    virtual std::vector<call_id_t> remove(int num_elements) = 0;
 };
 
 class RandomRemover : BaseRemover
 {
 public:
-    RandomRemover(SolutionManipulator& manipulator, int num_elements) : BaseRemover(manipulator, num_elements) {}
+    RandomRemover(SolutionManipulator& manipulator) : BaseRemover(manipulator) {}
 
-    std::vector<call_id_t> remove() override
+    std::vector<call_id_t> remove(int num_elements) override
     {
         std::vector<call_id_t> removed_calls;
 
@@ -53,7 +52,7 @@ class SimilarVehiclesRemover : BaseRemover
 public:
     std::vector<std::vector<double>> similarities;
 
-    SimilarVehiclesRemover(SolutionManipulator& manipulator, int num_elements) : BaseRemover(manipulator, num_elements), similarities()
+    SimilarVehiclesRemover(SolutionManipulator& manipulator) : BaseRemover(manipulator), similarities()
     {
         similarities.push_back({});
         for (call_id_t call_1 = 1; call_1 <= manipulator.solution.problem.get().n_calls; call_1++)
@@ -67,7 +66,7 @@ public:
         }
     }
 
-    std::vector<call_id_t> remove()
+    std::vector<call_id_t> remove(int num_elements)
     {
         std::vector<call_id_t> removed_calls;
 
@@ -139,9 +138,9 @@ public:
 class FullVehiclesRemover : BaseRemover
 {
 public:
-    FullVehiclesRemover(SolutionManipulator& manipulator, int num_elements) : BaseRemover(manipulator, num_elements) {}
+    FullVehiclesRemover(SolutionManipulator& manipulator) : BaseRemover(manipulator) {}
 
-    std::vector<call_id_t> remove()
+    std::vector<call_id_t> remove(int num_elements)
     {
         std::vector<call_id_t> removed_calls;
 
