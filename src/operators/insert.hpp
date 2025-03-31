@@ -131,14 +131,14 @@ std::vector<std::pair<int, std::vector<call_id_t>>> calculate_insertion_options(
     return std::move(options);
 }
 
-
-class RegretInserter : BaseInserter
+class IterativeInserter : public BaseInserter
 {
 public:
+    // TODO: consider splitting the options into two vectors for faster access to costs only
     std::vector<std::vector<std::pair<int, std::vector<call_id_t>>>> insertion_options; // [call][vehicle]
     ProblemReimagined& problem;
 
-    RegretInserter(SolutionManipulator& manipulator) : BaseInserter(manipulator), insertion_options(), problem(manipulator.solution.problem.get())
+    IterativeInserter(SolutionManipulator& manipulator) : BaseInserter(manipulator), insertion_options(), problem(manipulator.solution.problem.get())
     {
         insertion_options.push_back({});
         for (int c = 1; c <= problem.n_calls; c++)
@@ -151,7 +151,7 @@ public:
         }
     };
 
-    void insert(std::vector<call_id_t> calls)
+    virtual void insert(std::vector<call_id_t> calls)
     {
         for (auto call : calls)
         {
@@ -167,38 +167,14 @@ public:
         }
     }
 
+    virtual std::tuple<call_id_t, vehicle_id_t> select_insertion(std::vector<call_id_t>& calls) = 0;
+
     void insert_one(std::vector<call_id_t>& calls)
     {
-        std::vector<int> regret;
-
-        for (auto call : calls)
-        {
-            auto call_costs = insertion_options[call];
-            std::sort(call_costs.begin(), call_costs.end());
-            regret.push_back(call_costs[1].first - call_costs[0].first);
-        }
-
-        std::vector<std::pair<double, call_id_t>> options;
-        for (int i = 0; i < calls.size(); i++)
-        {
-            options.push_back({-regret[i], calls[i]});
-        }
-
-        call_id_t best_call = select_best_geom(options, 0.8).second;
-
-        int best_cost = INT_MAX;
-        vehicle_id_t best_vehicle;
-
-        for (int v = 0; v <= problem.n_vehicles; v++)
-        {
-            if (insertion_options[best_call][v].first < best_cost)
-            {
-                best_vehicle = v;
-                best_cost = insertion_options[best_call][v].first;
-            }
-        }
-
-        auto& best_plan = insertion_options[best_call][best_vehicle].second;
+        auto insertion = select_insertion(calls);
+        auto best_call = std::get<0>(insertion);
+        auto best_vehicle = std::get<1>(insertion);
+        auto& best_plan  = insertion_options[best_call][best_vehicle].second;
 
         manipulator.set_plan(best_vehicle, best_plan.begin(), best_plan.end());
 
@@ -214,12 +190,55 @@ public:
 
     void update_costs(call_id_t call, vehicle_id_t vehicle)
     {
+        // TODO: improve performance by avoiding copies
         auto options = calculate_insertion_options(call, vehicle, manipulator);
         insertion_options[call][vehicle] = *std::min_element(options.begin(), options.end());
     }
 };
 
-class RandomInserter : BaseInserter
+
+class RegretInserter : public IterativeInserter
+{
+    std::vector<std::pair<double, call_id_t>> options;
+    std::vector<int> call_costs;
+
+public:
+    RegretInserter(SolutionManipulator& manipulator) : IterativeInserter(manipulator), options()
+    {
+    };
+
+    virtual std::tuple<call_id_t, vehicle_id_t> select_insertion(std::vector<call_id_t>& calls) override
+    {
+        options.clear();
+        for (auto call : calls)
+        {
+            call_costs.clear();
+            for (auto& option : insertion_options[call])
+            {
+                call_costs.push_back(option.first);
+            }
+            std::sort(call_costs.begin(), call_costs.end());
+            auto regret = call_costs[1] - call_costs[0];
+            options.push_back({ -regret, call });
+        }
+
+        call_id_t best_call = select_best_geom(options, 1.0).second;
+
+        int best_cost = INT_MAX;
+        vehicle_id_t best_vehicle;
+        for (int v = 0; v <= problem.n_vehicles; v++)
+        {
+            if (insertion_options[best_call][v].first < best_cost)
+            {
+                best_vehicle = v;
+                best_cost = insertion_options[best_call][v].first;
+            }
+        }
+        return { best_call, best_vehicle };
+    }
+};
+
+class RandomInserter : public BaseInserter
 {
 public:
     ProblemReimagined& problem;
