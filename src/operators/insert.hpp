@@ -39,6 +39,7 @@ public:
 
 std::vector<std::pair<int, std::vector<call_id_t>>> calculate_insertion_options(call_id_t call_id, vehicle_id_t vehicle, SolutionManipulator& manipulator)
 {
+    // TODO: if we dont want all options but only the best one, we can just check if the cost is better and check the feasibility later
     if (vehicle == 0)
     {
         auto calls = manipulator.calls[0];
@@ -134,22 +135,18 @@ std::vector<std::pair<int, std::vector<call_id_t>>> calculate_insertion_options(
 class RegretInserter : BaseInserter
 {
 public:
-    std::vector<std::vector<int>> costs; // [call][vehicle]
-    std::vector<std::vector<std::vector<call_id_t>>> plans;
+    std::vector<std::vector<std::pair<int, std::vector<call_id_t>>>> insertion_options; // [call][vehicle]
     ProblemReimagined& problem;
 
-    RegretInserter(SolutionManipulator& manipulator) : BaseInserter(manipulator), costs(), plans(), problem(manipulator.solution.problem.get())
+    RegretInserter(SolutionManipulator& manipulator) : BaseInserter(manipulator), insertion_options(), problem(manipulator.solution.problem.get())
     {
-        costs.push_back({});
-        plans.push_back({});
+        insertion_options.push_back({});
         for (int c = 1; c <= problem.n_calls; c++)
         {
-            costs.push_back({});
-            plans.push_back({});
+            insertion_options.push_back({});
             for (int v = 0; v <= problem.n_vehicles; v++)
             {
-                costs[c].push_back(INT_MAX);
-                plans[c].push_back({});
+                insertion_options[c].push_back({INT_MAX, {}});
             }
         }
     };
@@ -176,9 +173,9 @@ public:
 
         for (auto call : calls)
         {
-            std::vector<int> call_costs = costs[call];
+            auto call_costs = insertion_options[call];
             std::sort(call_costs.begin(), call_costs.end());
-            regret.push_back(call_costs[1] - call_costs[0]);
+            regret.push_back(call_costs[1].first - call_costs[0].first);
         }
 
         std::vector<std::pair<double, call_id_t>> options;
@@ -187,21 +184,21 @@ public:
             options.push_back({-regret[i], calls[i]});
         }
 
-        call_id_t best_call = select_best_geom(options, 0.5).second;
+        call_id_t best_call = select_best_geom(options, 0.8).second;
 
         int best_cost = INT_MAX;
         vehicle_id_t best_vehicle;
 
         for (int v = 0; v <= problem.n_vehicles; v++)
         {
-            if (costs[best_call][v] < best_cost)
+            if (insertion_options[best_call][v].first < best_cost)
             {
                 best_vehicle = v;
-                best_cost = costs[best_call][v];
+                best_cost = insertion_options[best_call][v].first;
             }
         }
 
-        auto& best_plan = plans[best_call][best_vehicle];
+        auto& best_plan = insertion_options[best_call][best_vehicle].second;
 
         manipulator.set_plan(best_vehicle, best_plan.begin(), best_plan.end());
 
@@ -218,9 +215,7 @@ public:
     void update_costs(call_id_t call, vehicle_id_t vehicle)
     {
         auto options = calculate_insertion_options(call, vehicle, manipulator);
-        auto best_insertion = *std::min_element(options.begin(), options.end());
-        costs[call][vehicle] = best_insertion.first;
-        plans[call][vehicle] = std::move(best_insertion.second);
+        insertion_options[call][vehicle] = *std::min_element(options.begin(), options.end());
     }
 };
 
