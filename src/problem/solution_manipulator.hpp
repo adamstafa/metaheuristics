@@ -60,29 +60,6 @@ public:
         frames.pop_back();
     }
 
-    std::string python_string()
-    {
-        std::vector<int> joined_calls;
-        for (size_t i = 1; i < calls.size(); ++i)
-        {
-            joined_calls.insert(joined_calls.end(), calls[i].begin(), calls[i].end());
-            joined_calls.push_back(0);
-        }
-        joined_calls.insert(joined_calls.end(), calls[0].begin(), calls[0].end());
-
-        std::string result = "[";
-        for (size_t i = 0; i < joined_calls.size(); ++i)
-        {
-            result += std::to_string(abs(joined_calls[i]));
-            if (i != joined_calls.size() - 1)
-            {
-                result += ", ";
-            }
-        }
-        result += "]";
-        return result;
-    }
-
     vehicle_id_t get_vehicle_for_call(call_id_t call)
     {
         for (vehicle_id_t v = 0; v <= solution.problem.get().n_vehicles; v++)

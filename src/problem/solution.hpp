@@ -259,4 +259,44 @@ public:
             std::cout << std::endl;
         }
     }
+
+    std::string python_string()
+    {
+        std::vector<bool> unhandled_calls(problem.get().n_calls + 1, true);
+        std::vector<int> joined_calls;
+        for (vehicle_id_t v = 1; v <= problem.get().n_vehicles; v++)
+        {
+            auto& vs = vehicle_solution(v);
+            for (int i = 0; i < vs.num_calls(); i++)
+            {
+                auto call = vs.plan[i + 1].call;
+                if (call != 0)
+                {
+                    unhandled_calls[abs(call)] = false;
+                    joined_calls.push_back(abs(call));
+                }
+            }
+            joined_calls.push_back(0);
+        }
+        for (call_id_t c = 1; c <= problem.get().n_calls; c++)
+        {
+            if (unhandled_calls[c])
+            {
+                joined_calls.push_back(c);
+                joined_calls.push_back(c);
+            }
+        }
+
+        std::string result = "[";
+        for (size_t i = 0; i < joined_calls.size(); ++i)
+        {
+            result += std::to_string(joined_calls[i]);
+            if (i != joined_calls.size() - 1)
+            {
+                result += ", ";
+            }
+        }
+        result += "]";
+        return result;
+    }
 };
