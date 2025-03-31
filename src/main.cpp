@@ -12,6 +12,7 @@
 #include "operators/reinsert.hpp"
 #include "algorithms/algorithms.hpp"
 #include "operators/alns_operator.hpp"
+#include "logger.hpp"
 
 AdaptiveRandomChoice get_alns_operator(SolutionManipulator& manipulator)
 {
@@ -77,9 +78,9 @@ WeightedRandomChoice get_fixed_weights_operator(SolutionManipulator& manipulator
 
 int main(int argc, char* argv[])
 {
-    if (argc != 2) {
-        std::cerr << "Wrong number of arguments" << std::endl;
-        return 1;
+    std::string log_path = "data.csv";
+    if (argc == 3) {
+        log_path = argv[2];
     }
 
     std::string problem_path = argv[1];
@@ -112,7 +113,9 @@ int main(int argc, char* argv[])
     // std::cout << best_sol.feasible() << std::endl;
     // std::cout << best_sol.valid() << std::endl;
     // std::cout << best_sol.cost() << std::endl << std::endl;
-    std::cout << manipulator.python_string() << std::endl;
+    std::cout << best_sol.python_string() << std::endl;
+
+    Logger::dump(log_path);
 
     return 0;
 }

@@ -8,6 +8,7 @@
 #include "../problem/solution_manipulator.hpp"
 #include "reinsert.hpp"
 #include "rng.hpp"
+#include "../logger.hpp"
 
 
 class UCBSampler
@@ -58,7 +59,7 @@ public:
 
     int sample()
     {
-        if (std::uniform_real_distribution<>(0.0, 1.0)(gen) < 0.1)
+        if (std::uniform_real_distribution<>(0.0, 1.0)(gen) < 0.1 || steps < 100)
         {
             return gen() % n_actions;
         }
@@ -136,6 +137,12 @@ public:
         best_cost = std::min(best_cost, new_cost);
         sampler.update(op, score);
 
+        Logger::log("op" + std::to_string(op) + ".delta", delta);
+        double mean_sum = std::accumulate(sampler.means.begin(), sampler.means.end(), 0.0);
+        for (int i = 0; i < sampler.n_actions; i++)
+        {
+            Logger::log("op" + std::to_string(i) + ".prob", sampler.means[i] / mean_sum);
+        }
         // if (sampler.steps % 1000 == 0)
         // {
         //     std::cout << "Action counts: ";

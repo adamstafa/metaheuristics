@@ -17,6 +17,7 @@ class Solver:
         self.n_vehicles = self.prob['n_vehicles']
         
         self.log_path = f'logs/{algorithm}/{problem_name}/{run_id}.txt'
+        self.measurement_path = f'measurements/{problem_name}/{run_id}.csv'
         self.solver_path = f'build/optimize'
 
         calls = list(range(1, self.n_calls + 1))
@@ -44,7 +45,8 @@ class Solver:
         # w2 = 0.6
         # w3 = 0.15
         # proc = os.popen(f'{self.solver_path} {self.problem_path} {w1} {w2} {w3}')
-        proc = os.popen(f'{self.solver_path} {self.problem_path}')
+        proc = os.popen(f'{self.solver_path} {self.problem_path} {self.measurement_path}')
+        # os.popen(f'mv data.csv {self.measurement_path}') # can't use multi processing
         output = proc.read().strip()
         sol = [ int(x) for x in output[1:-1].split(',') ]
         return sol
@@ -63,6 +65,7 @@ class Solver:
         self.check_validity(best_sol)
 
         os.makedirs(os.path.dirname(self.log_path), exist_ok=True)
+        os.makedirs(os.path.dirname(self.measurement_path), exist_ok=True)
         with open(self.log_path, 'w') as f:
             print(best_objective, file=f)
             print(best_sol, file=f)

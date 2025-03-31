@@ -4,6 +4,7 @@
 #include "../problem/problem.hpp"
 #include "../operators/reinsert.hpp"
 #include "../operators/all_permutations.hpp"
+#include "../logger.hpp"
 #include <cassert>
 #include <cmath>
 
@@ -58,7 +59,7 @@ public:
     int warmup_steps;
     Solution best_solution;
     int no_improvement_steps = 0;
-    int escape_steps = 5000;
+    int escape_steps = 5000000;
 
 SimulatedAnnealing(ProblemReimagined &problem, SolutionManipulator &manipulator, BaseOperator &op, int warmup_steps)
         : BaseAlgorithm(problem, manipulator, op), warmup_steps(warmup_steps), best_solution(problem) {}
@@ -95,6 +96,7 @@ SimulatedAnnealing(ProblemReimagined &problem, SolutionManipulator &manipulator,
                     manipulator.rollback();
                 }
             }
+            Logger::advance_iteration();
         }
 
         int delta_avg = ((double) delta_sum) / delta_count;
@@ -115,8 +117,12 @@ SimulatedAnnealing(ProblemReimagined &problem, SolutionManipulator &manipulator,
             if (manipulator.solution.cost() < best_cost)
             {
                 best_cost = manipulator.solution.cost();
-                best_solution = manipulator.solution;
                 no_improvement_steps = 0;
+            }
+
+            if (manipulator.solution.cost() < best_solution.cost())
+            {
+                best_solution = manipulator.solution;
             }
 
             if (delta < 0)
@@ -157,6 +163,17 @@ SimulatedAnnealing(ProblemReimagined &problem, SolutionManipulator &manipulator,
             }
 
             temperature *= alpha;
+
+            Logger::log("cost", manipulator.solution.cost());
+            Logger::log("temperature", temperature);
+            Logger::log("best_cost", best_cost);
+            Logger::log("no_improvement_steps", no_improvement_steps);
+            Logger::log("delta", delta);
+            if (delta > 0)
+            {
+                Logger::log("acceptance_probability", std::exp(- delta / temperature));
+            }
+            Logger::advance_iteration();
 
             // if (i % 1000 == 0)
             // {
