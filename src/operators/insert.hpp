@@ -137,6 +137,78 @@ std::vector<std::pair<int, std::vector<call_id_t>>> calculate_insertion_options(
     return std::move(options);
 }
 
+
+class IterativeInserter : public BaseInserter
+{
+public:
+    // TODO: consider splitting the options into two vectors for faster access to costs only
+    std::vector<std::vector<std::pair<int, std::vector<call_id_t>>>> insertion_options; // [call][vehicle]
+    std::vector<VehicleSolution> vehicle_solutions; // [vehicle]
+    ProblemReimagined& problem;
+
+    IterativeInserter(SolutionManipulator& manipulator) : BaseInserter(manipulator), insertion_options(), vehicle_solutions(), problem(manipulator.solution.problem.get())
+    {
+        insertion_options.push_back({});
+        for (int c = 1; c <= problem.n_calls; c++)
+        {
+            insertion_options.push_back({});
+            for (int v = 0; v <= problem.n_vehicles; v++)
+            {
+                insertion_options[c].push_back({INT_MAX, {}});
+            }
+        }
+        
+        for (int vehicle = 1; vehicle <= problem.n_vehicles; vehicle++)
+        {
+            vehicle_solutions.push_back({vehicle, manipulator.solution.problem.get().vehicle_problems[vehicle]});
+        }
+    };
+
+    virtual void insert(std::vector<call_id_t> calls)
+    {
+        for (auto call : calls)
+        {
+            for (vehicle_id_t v = 0; v <= problem.n_vehicles; v++)
+            {
+                update_costs(call, v);
+            }
+        }
+
+        while (calls.size() > 0)
+        {
+            insert_one(calls);
+        }
+    }
+
+    virtual std::tuple<call_id_t, vehicle_id_t> select_insertion(std::vector<call_id_t>& calls) = 0;
+
+    void insert_one(std::vector<call_id_t>& calls)
+    {
+        auto insertion = select_insertion(calls);
+        auto best_call = std::get<0>(insertion);
+        auto best_vehicle = std::get<1>(insertion);
+        auto& best_plan  = insertion_options[best_call][best_vehicle].second;
+
+        manipulator.set_plan(best_vehicle, best_plan.begin(), best_plan.end());
+
+        calls.erase(std::remove_if(calls.begin(), calls.end(), [best_call](call_id_t c) {
+            return abs(c) == abs(best_call);
+        }), calls.end());
+
+        for (auto call : calls)
+        {
+            update_costs(call, best_vehicle);
+        }
+    }
+
+    void update_costs(call_id_t call, vehicle_id_t vehicle)
+    {
+        // TODO: improve performance by avoiding copies
+        // auto options = calculate_insertion_options(call, vehicle, manipulator);
+        // insertion_options[call][vehicle] = *std::min_element(options.begin(), options.end());
+        calculate_best_insertion_option(call, vehicle, manipulator, insertion_options[call][vehicle]);
+}
+
 void calculate_best_insertion_option(call_id_t call_id, vehicle_id_t vehicle, SolutionManipulator& manipulator, std::pair<int, std::vector<call_id_t>>& output)
 {
     // TODO: if we dont want all options but only the best one, we can just check if the cost is better and check the feasibility later
@@ -156,8 +228,9 @@ void calculate_best_insertion_option(call_id_t call_id, vehicle_id_t vehicle, So
         return;
     }
 
+        VehicleSolution& vs = vehicle_solutions[vehicle - 1];
+        vs.remove_many(vs.num_calls());
 
-    VehicleSolution vs{vehicle, manipulator.solution.problem.get().vehicle_problems[vehicle]};
     auto& pickup = vs.problem.get().get_call(call_id);
     auto& delivery = vs.problem.get().get_call(-call_id);
     std::vector<call_id_t>& calls = manipulator.calls[vehicle];
@@ -235,71 +308,6 @@ void calculate_best_insertion_option(call_id_t call_id, vehicle_id_t vehicle, So
             }
         }
     }
-}
-
-class IterativeInserter : public BaseInserter
-{
-public:
-    // TODO: consider splitting the options into two vectors for faster access to costs only
-    std::vector<std::vector<std::pair<int, std::vector<call_id_t>>>> insertion_options; // [call][vehicle]
-    ProblemReimagined& problem;
-
-    IterativeInserter(SolutionManipulator& manipulator) : BaseInserter(manipulator), insertion_options(), problem(manipulator.solution.problem.get())
-    {
-        insertion_options.push_back({});
-        for (int c = 1; c <= problem.n_calls; c++)
-        {
-            insertion_options.push_back({});
-            for (int v = 0; v <= problem.n_vehicles; v++)
-            {
-                insertion_options[c].push_back({INT_MAX, {}});
-            }
-        }
-    };
-
-    virtual void insert(std::vector<call_id_t> calls)
-    {
-        for (auto call : calls)
-        {
-            for (vehicle_id_t v = 0; v <= problem.n_vehicles; v++)
-            {
-                update_costs(call, v);
-            }
-        }
-
-        while (calls.size() > 0)
-        {
-            insert_one(calls);
-        }
-    }
-
-    virtual std::tuple<call_id_t, vehicle_id_t> select_insertion(std::vector<call_id_t>& calls) = 0;
-
-    void insert_one(std::vector<call_id_t>& calls)
-    {
-        auto insertion = select_insertion(calls);
-        auto best_call = std::get<0>(insertion);
-        auto best_vehicle = std::get<1>(insertion);
-        auto& best_plan  = insertion_options[best_call][best_vehicle].second;
-
-        manipulator.set_plan(best_vehicle, best_plan.begin(), best_plan.end());
-
-        calls.erase(std::remove_if(calls.begin(), calls.end(), [best_call](call_id_t c) {
-            return abs(c) == abs(best_call);
-        }), calls.end());
-
-        for (auto call : calls)
-        {
-            update_costs(call, best_vehicle);
-        }
-    }
-
-    void update_costs(call_id_t call, vehicle_id_t vehicle)
-    {
-        // TODO: improve performance by avoiding copies
-        // auto options = calculate_insertion_options(call, vehicle, manipulator);
-        // insertion_options[call][vehicle] = *std::min_element(options.begin(), options.end());
-        calculate_best_insertion_option(call, vehicle, manipulator, insertion_options[call][vehicle]);
     }
 };
 
@@ -329,7 +337,11 @@ public:
             options.push_back({ -regret, call });
         }
 
-        call_id_t best_call = select_best_geom(options, 1.0).second;
+        // TODO: explore insertion options
+        // selecting always the best leads to low robustness in smaller instances
+        // call_id_t best_call = select_best(options).second;
+        call_id_t best_call = select_best_geom(options, 0.9).second;
+        // call_id_t best_call = select_proportionally(options).second;
 
         int best_cost = INT_MAX;
         vehicle_id_t best_vehicle;
