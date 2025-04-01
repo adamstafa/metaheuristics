@@ -53,6 +53,8 @@ public:
     double alpha = 1.0;
     double lambda = 0.95;
     double base_score = 0.1;
+    double random_action_probability = 0.1;
+    int warmup_steps = 100;
 
     DiscountedMeanSampler(int n_actions) : n_actions(n_actions), steps(0), counts(n_actions, 0), means(n_actions, 0.0), norms(n_actions, 1.0)
     {
@@ -60,18 +62,19 @@ public:
 
     int sample()
     {
-        if (std::uniform_real_distribution<>(0.0, 1.0)(gen) < 0.1 || steps < 100)
+        if (std::uniform_real_distribution<>(0.0, 1.0)(gen) < random_action_probability || steps < warmup_steps)
         {
             return gen() % n_actions;
         }
 
         std::vector<double> scores;
-        double sum = std::accumulate(means.begin(), means.end(), 0.0);
         for (int i = 0; i < n_actions; i++)
         {
             // scores.push_back(means[i] + std::sqrt(alpha * std::log(steps) / counts[i])); // UCB
             scores.push_back(means[i] + base_score); // mean
         }
+
+        // double sum = std::accumulate(scores.begin(), scores.end(), 0.0) ;
         // if (steps % 1000 == 0)
         // {
         //     std::cout << "Scores: ";
