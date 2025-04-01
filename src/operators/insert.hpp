@@ -64,7 +64,14 @@ std::vector<std::pair<int, std::vector<call_id_t>>> calculate_insertion_options(
     int last = INT_MAX;
     for (int i = calls.size() - 1; i >= 0; i--)
     {
-        last = std::min(last, vs.problem.get().get_call(calls[i]).window_high);
+        int transfer_time = 0;
+        if (i < calls.size() - 1)
+        {
+            auto call_1 = vs.problem.get().get_call(calls[i]);
+            auto call_2 = vs.problem.get().get_call(calls[i + 1]);
+            transfer_time = call_1.processing_time + vs.problem.get().travel_time(call_1.id, call_2.id);
+        }
+        last = std::min(last - transfer_time, vs.problem.get().get_call(calls[i]).window_high);
         latest_arrival[i] = last;
     }
 
@@ -160,9 +167,15 @@ void calculate_best_insertion_option(call_id_t call_id, vehicle_id_t vehicle, So
     int last = INT_MAX;
     for (int i = calls.size() - 1; i >= 0; i--)
     {
-        last = std::min(last, vs.problem.get().get_call(calls[i]).window_high);
+        int transfer_time = 0;
+        if (i < calls.size() - 1)
+        {
+            auto call_1 = vs.problem.get().get_call(calls[i]);
+            auto call_2 = vs.problem.get().get_call(calls[i + 1]);
+            transfer_time = call_1.processing_time + vs.problem.get().travel_time(call_1.id, call_2.id);
+        }
+        last = std::min(last - transfer_time, vs.problem.get().get_call(calls[i]).window_high);
         latest_arrival[i] = last;
-        
     }
 
     int best_cost = INT_MAX;
