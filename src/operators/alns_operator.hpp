@@ -52,6 +52,7 @@ public:
     std::vector<double> norms;
     double alpha = 1.0;
     double lambda = 0.95;
+    double base_score = 0.1;
 
     DiscountedMeanSampler(int n_actions) : n_actions(n_actions), steps(0), counts(n_actions, 0), means(n_actions, 0.0), norms(n_actions, 1.0)
     {
@@ -69,7 +70,7 @@ public:
         for (int i = 0; i < n_actions; i++)
         {
             // scores.push_back(means[i] + std::sqrt(alpha * std::log(steps) / counts[i])); // UCB
-            scores.push_back(means[i]); // mean
+            scores.push_back(means[i] + base_score); // mean
         }
         // if (steps % 1000 == 0)
         // {
