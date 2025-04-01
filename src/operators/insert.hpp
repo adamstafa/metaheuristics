@@ -39,7 +39,6 @@ public:
 
 std::vector<std::pair<int, std::vector<call_id_t>>> calculate_insertion_options(call_id_t call_id, vehicle_id_t vehicle, SolutionManipulator& manipulator)
 {
-    // TODO: if we dont want all options but only the best one, we can just check if the cost is better and check the feasibility later
     if (vehicle == 0)
     {
         auto calls = manipulator.calls[0];
@@ -131,6 +130,100 @@ std::vector<std::pair<int, std::vector<call_id_t>>> calculate_insertion_options(
     return std::move(options);
 }
 
+void calculate_best_insertion_option(call_id_t call_id, vehicle_id_t vehicle, SolutionManipulator& manipulator, std::pair<int, std::vector<call_id_t>>& output)
+{
+    // TODO: if we dont want all options but only the best one, we can just check if the cost is better and check the feasibility later
+    if (vehicle == 0)
+    {
+        output.second.assign(manipulator.calls[0].begin(), manipulator.calls[0].end());
+        output.second.push_back(call_id);
+        output.second.push_back(-call_id);
+        output.first = manipulator.solution.problem.get().no_transport_costs[call_id];
+        return;
+    }
+
+    auto& og_vs = manipulator.solution.vehicle_solution(vehicle);
+    if (!og_vs.problem.get().get_call(call_id).compatible)
+    {
+        output.first = INT_MAX;
+        return;
+    }
+
+
+    VehicleSolution vs{vehicle, manipulator.solution.problem.get().vehicle_problems[vehicle]};
+    auto& pickup = vs.problem.get().get_call(call_id);
+    auto& delivery = vs.problem.get().get_call(-call_id);
+    std::vector<call_id_t>& calls = manipulator.calls[vehicle];
+    vs.reserve(calls.size() + 2);
+
+    std::vector<int> latest_arrival(calls.size());
+    int last = INT_MAX;
+    for (int i = calls.size() - 1; i >= 0; i--)
+    {
+        last = std::min(last, vs.problem.get().get_call(calls[i]).window_high);
+        latest_arrival[i] = last;
+        
+    }
+
+    int best_cost = INT_MAX;
+    output.first = INT_MAX;
+    for (int i = 0; i <= calls.size(); i++) // i = number of calls before the first insertion place
+    {
+        if (i > 0)
+        {
+            vs.remove_many(vs.num_calls() - (i - 1));
+            vs.add_call(calls[i - 1]);
+        }
+
+        if (vs.plan.back().departure_time > std::min(pickup.window_high, delivery.window_high))
+        {
+            break;
+        }
+
+        vs.add_call(call_id);
+    
+        if (i < calls.size() && vs.plan.back().departure_time > latest_arrival[i])
+        {
+            continue;
+        }
+
+        
+        for (int j = 0; j <= calls.size() - i; j++) // j = number of calls between the insertion places
+        {
+            if (j > 0)
+            {
+                vs.remove_many(vs.num_calls() - (i + j));
+                vs.add_call(calls[i + j - 1]);
+            }
+
+            if (vs.plan.back().departure_time > delivery.window_high)
+            {
+                break;
+            }
+
+            vs.add_call(-call_id);
+
+            if ((i + j) < calls.size() && vs.plan.back().departure_time > latest_arrival[i + j])
+            {
+                continue;
+            }
+
+            vs.add_many(calls.begin() + i + j, calls.end());
+
+            if (vs.feasible() && vs.cost() < best_cost)
+            {
+                best_cost = vs.cost();
+                output.second.resize(vs.num_calls());
+                for (int i = 0; i < vs.num_calls(); i++)
+                {
+                    output.second[i] = vs.plan[i + 1].call;
+                }
+                output.first = vs.cost() - og_vs.cost();
+            }
+        }
+    }
+}
+
 class IterativeInserter : public BaseInserter
 {
 public:
@@ -191,8 +284,9 @@ public:
     void update_costs(call_id_t call, vehicle_id_t vehicle)
     {
         // TODO: improve performance by avoiding copies
-        auto options = calculate_insertion_options(call, vehicle, manipulator);
-        insertion_options[call][vehicle] = *std::min_element(options.begin(), options.end());
+        // auto options = calculate_insertion_options(call, vehicle, manipulator);
+        // insertion_options[call][vehicle] = *std::min_element(options.begin(), options.end());
+        calculate_best_insertion_option(call, vehicle, manipulator, insertion_options[call][vehicle]);
     }
 };
 
