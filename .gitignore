@@ -5,4 +5,4 @@ reports/output
 *.pyc
 *.pyo
 measurements
-notebookes/.ipynb_checkpoints
+notebooks/.ipynb_checkpoints
