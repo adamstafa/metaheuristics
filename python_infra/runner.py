@@ -89,6 +89,6 @@ if __name__ == '__main__':
     for problem in problems:
         print(f'{problem}')
         def f(i):
-            Solver('data', problem, i, 'alns').run()
+            Solver('data', problem, i, 'final').run()
         with Pool(10) as p:
             p.map(f, range(10))

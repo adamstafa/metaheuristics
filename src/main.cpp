@@ -17,19 +17,16 @@
 AdaptiveRandomChoice get_alns_operator(SolutionManipulator& manipulator)
 {
     std::vector<std::unique_ptr<BaseOperator>> operators;
-    // operators.emplace_back(std::make_unique<ReinsertRandomRegret>(manipulator, 30));
     operators.emplace_back(std::make_unique<ReinsertRandomRegret>(manipulator, 20));
-    // operators.emplace_back(std::make_unique<ReinsertRandomRegret>(manipulator, 10));
-    // operators.emplace_back(std::make_unique<ReinsertRandomRegret>(manipulator, 3));
-    // operators.emplace_back(std::make_unique<ReinsertSimilarRegret>(manipulator, 40));
-    operators.emplace_back(std::make_unique<ReinsertSimilarRegret>(manipulator, 30));
+    operators.emplace_back(std::make_unique<ReinsertRandomRegret>(manipulator, 30));
     operators.emplace_back(std::make_unique<ReinsertSimilarRegret>(manipulator, 20));
     operators.emplace_back(std::make_unique<ReinsertSimilarRegret>(manipulator, 10));
     operators.emplace_back(std::make_unique<ReinsertSimilarRegret>(manipulator, 3));
-    // operators.emplace_back(std::make_unique<ReinsertFullRegret>(manipulator, 30));
     operators.emplace_back(std::make_unique<ReinsertFullRegret>(manipulator, 20));
-    // operators.emplace_back(std::make_unique<ReinsertFullRegret>(manipulator, 10));
-    // operators.emplace_back(std::make_unique<ReinsertFullRegret>(manipulator, 3));
+
+    // operators.emplace_back(std::make_unique<ReinsertSimilarMatching>(manipulator, 15));
+    // operators.emplace_back(std::make_unique<ReinsertSimilarMatching>(manipulator, 10));
+    // operators.emplace_back(std::make_unique<ReinsertRandomMatching>(manipulator, 15));
 
     AdaptiveRandomChoice op(manipulator, std::move(operators));
     return op;
