@@ -61,6 +61,9 @@ public:
 using ReinsertRandomRegret = ReinsertOperator<RandomRemover, RegretInserter>;
 using ReinsertSimilarRegret = ReinsertOperator<SimilarVehiclesRemover, RegretInserter>;
 using ReinsertFullRegret = ReinsertOperator<FullVehiclesRemover, RegretInserter>;
+using ReinsertRandomMatching = ReinsertOperator<RandomRemover, MatchingInserter>;
+using ReinsertSimilarMatching = ReinsertOperator<SimilarVehiclesRemover, MatchingInserter>;
+using ReinsertFullMatching = ReinsertOperator<FullVehiclesRemover, MatchingInserter>;
 
 class Sequence : public BaseOperator
 {
