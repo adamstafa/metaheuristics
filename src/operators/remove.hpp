@@ -80,6 +80,7 @@ public:
         while (removed_calls.size() < num_elements)
         {
             call_id_t call = select_best_geom(distances, 0.2).second;
+            // call_id_t call = select_proportionally(distances).second;
             distances.erase(std::remove_if(distances.begin(), distances.end(), [call](const std::pair<int, call_id_t>& p) {
                 return abs(p.second) == abs(call);
             }), distances.end());
@@ -156,6 +157,7 @@ public:
         while (removed_calls.size() < num_elements)
         {
             call_id_t call = select_best_geom(distances, 0.05).second;
+            // call_id_t call = select_proportionally(distances).second;
             distances.erase(std::remove_if(distances.begin(), distances.end(), [call](const std::pair<int, call_id_t>& p) {
                 return p.second == call || p.second == -call;
             }), distances.end());
