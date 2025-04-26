@@ -36,9 +36,10 @@ std::pair<int, call_id_t> select_proportionally(std::vector<std::pair<double, ca
     int max = std::max_element(options.begin(), options.end())->first;
 
     std::vector<int> probs;
+    double min_prob = 0.01;
     for (auto opt : options)
     {
-        probs.push_back((max - (double) opt.first)/(max - min)); 
+        probs.push_back((max - (double) opt.first)/(max - min) + min_prob); 
     }
     std::discrete_distribution<> d(probs.begin(), probs.end());
 

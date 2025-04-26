@@ -61,9 +61,11 @@ public:
 using ReinsertRandomRegret = ReinsertOperator<RandomRemover, RegretInserter>;
 using ReinsertSimilarRegret = ReinsertOperator<SimilarVehiclesRemover, RegretInserter>;
 using ReinsertFullRegret = ReinsertOperator<FullVehiclesRemover, RegretInserter>;
+using ReinsertExpensiveRegret = ReinsertOperator<ExpensiveCallRemover, RegretInserter>;
 using ReinsertRandomMatching = ReinsertOperator<RandomRemover, MatchingInserter>;
 using ReinsertSimilarMatching = ReinsertOperator<SimilarVehiclesRemover, MatchingInserter>;
 using ReinsertFullMatching = ReinsertOperator<FullVehiclesRemover, MatchingInserter>;
+using ReinsertRandomGreedy = ReinsertOperator<RandomRemover, GreedyInserter>;
 
 class Sequence : public BaseOperator
 {
@@ -116,5 +118,31 @@ public:
         std::discrete_distribution<> dis(weights.begin(), weights.end());
         int random_index = dis(gen);
         operators[random_index]->apply();
+    }
+};
+
+class TryReinsertAll : public BaseOperator
+{
+public:
+    TryReinsertAll(SolutionManipulator& manipulator) 
+        : BaseOperator(manipulator)
+    {
+    }
+
+    void apply() override
+    {
+        int original_cost = manipulator.solution.cost();
+        
+        for (call_id_t call = 1; call <= manipulator.solution.problem.get().n_calls; call++)
+        {
+            int vehicle = manipulator.get_vehicle_for_call(call);
+            auto calls = manipulator.calls[vehicle];
+            calls.erase(std::remove_if(calls.begin(), calls.end(), [call](call_id_t c) {
+                return abs(c) == abs(call);
+            }), calls.end());
+            manipulator.set_plan(vehicle, calls.begin(), calls.end());
+            RegretInserter inserter {manipulator};
+            inserter.insert({call});
+        }
     }
 };

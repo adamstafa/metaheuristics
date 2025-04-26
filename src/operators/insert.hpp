@@ -274,7 +274,6 @@ public:
                 continue;
             }
 
-            
             for (int j = 0; j <= calls.size() - i; j++) // j = number of calls between the insertion places
             {
                 if (j > 0)
@@ -344,16 +343,41 @@ public:
         call_id_t best_call = select_best_geom(options, 0.9).second;
         // call_id_t best_call = select_proportionally(options).second;
 
-        int best_cost = INT_MAX;
-        vehicle_id_t best_vehicle;
+        std::vector<std::pair<double, vehicle_id_t>> vehicle_costs;
         for (int v = 0; v <= problem.n_vehicles; v++)
         {
-            if (insertion_options[best_call][v].first < best_cost)
-            {
-                best_vehicle = v;
-                best_cost = insertion_options[best_call][v].first;
-            }
+            vehicle_costs.push_back({insertion_options[best_call][v].first, v});
         }
+        
+        vehicle_id_t best_vehicle = select_best(vehicle_costs).second;
+        // call_id_t best_call = select_best_geom(options, 0.9).second;
+        // vehicle_id_t best_vehicle = select_proportionally(vehicle_costs).second;
+
+        return { best_call, best_vehicle };
+    }
+};
+
+class GreedyInserter : public IterativeInserter
+{
+    std::vector<std::pair<double, call_id_t>> options;
+    std::vector<int> call_costs;
+
+public:
+    GreedyInserter(SolutionManipulator& manipulator) : IterativeInserter(manipulator), options()
+    {
+    };
+
+    virtual std::tuple<call_id_t, vehicle_id_t> select_insertion(std::vector<call_id_t>& calls) override
+    {
+        call_id_t best_call = calls[gen() % calls.size()];
+
+        std::vector<std::pair<double, vehicle_id_t>> vehicle_costs;
+        for (int v = 0; v <= problem.n_vehicles; v++)
+        {
+            vehicle_costs.push_back({insertion_options[best_call][v].first, v});
+        }
+        vehicle_id_t best_vehicle = select_best(vehicle_costs).second;
+
         return { best_call, best_vehicle };
     }
 };
