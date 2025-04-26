@@ -51,7 +51,7 @@ public:
     std::vector<double> means;
     std::vector<double> norms;
     double alpha = 1.0;
-    double lambda = 0.95;
+    double lambda = 0.98;
     double base_score = 0.1;
     double random_action_probability = 0.1;
     int warmup_steps = 100;
