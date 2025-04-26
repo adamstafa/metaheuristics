@@ -59,9 +59,9 @@ public:
     int warmup_steps;
     Solution best_solution;
     int no_improvement_steps = 0;
-    int escape_steps = 5000000;
+    int escape_steps = 10000000;
 
-SimulatedAnnealing(ProblemReimagined &problem, SolutionManipulator &manipulator, BaseOperator &op, int warmup_steps)
+    SimulatedAnnealing(ProblemReimagined &problem, SolutionManipulator &manipulator, BaseOperator &op, int warmup_steps)
         : BaseAlgorithm(problem, manipulator, op), warmup_steps(warmup_steps), best_solution(problem) {}
 
     void run(int num_iterations) override
@@ -128,7 +128,7 @@ SimulatedAnnealing(ProblemReimagined &problem, SolutionManipulator &manipulator,
             if (delta < 0)
             {
                 manipulator.commit();
-                // no_improvement_steps = 0;
+                no_improvement_steps = 0;
             }
             else if(static_cast<float>(rand()) / RAND_MAX < std::exp(- delta / temperature))
             {
@@ -146,15 +146,15 @@ SimulatedAnnealing(ProblemReimagined &problem, SolutionManipulator &manipulator,
                 // TODO: pass escape operator as a parameter
                 // ReinsertOperator<FullVehiclesRemover, RandomInserter> escape_op(manipulator, problem.n_calls / 5);
                 // BestPermutationOperator best_permutation_op(manipulator);
-                ReinsertOperator<RandomRemover, RegretInserter> escape_op(manipulator, 10);
+                TryReinsertAll escape_op {manipulator};
 
-                // std::cout << "Escaping" << std::endl;
-                // std::cout << "Before escape: "<< manipulator.solution.cost() << std::endl;
-                for (int i = 0; i < 10; i++)
-                    escape_op.apply();
+                std::cout << "Escaping" << std::endl;
+                std::cout << "Before escape: "<< manipulator.solution.cost() << std::endl;
+                // for (int i = 0; i < 10; i++)
+                escape_op.apply();
                 // std::cout << "Mid escape: "<< manipulator.solution.cost() << std::endl;
                 // best_permutation_op.apply();
-                // std::cout << "After escape: "<< manipulator.solution.cost() << std::endl;
+                std::cout << "After escape: "<< manipulator.solution.cost() << std::endl;
                 // std::cout << manipulator.python_string() << std::endl;
 
                 no_improvement_steps = 0;
@@ -179,6 +179,58 @@ SimulatedAnnealing(ProblemReimagined &problem, SolutionManipulator &manipulator,
             // {
             //     std::cout << i << "\t" << best_cost << std::endl;
             // }
+        }
+    }
+};
+
+class RecordToRecord : BaseAlgorithm
+{
+public:
+    Solution best_solution;
+
+    RecordToRecord(ProblemReimagined &problem, SolutionManipulator &manipulator, BaseOperator &op)
+        : BaseAlgorithm(problem, manipulator, op), best_solution(problem) {}
+
+    void run(int num_iterations) override
+    {
+        int best_cost = manipulator.solution.cost();
+
+        for (int i = 0; i < num_iterations; i++)
+        {
+            manipulator.begin();
+
+            int old_cost = manipulator.solution.cost();
+
+            op.apply();
+            int delta = manipulator.solution.cost() - old_cost;
+            double d = 0.05 * (1.0 - ((double) i) / num_iterations) * best_cost;
+            int acceptance_threshold = best_cost + d;
+
+            if (manipulator.solution.cost() < best_cost)
+            {
+                best_cost = manipulator.solution.cost();
+                best_solution = manipulator.solution;
+            }
+
+            if (manipulator.solution.cost() < acceptance_threshold)
+            {
+                manipulator.commit();
+            }
+            else
+            {
+                manipulator.rollback();
+            }
+            
+            
+            Logger::log("cost", manipulator.solution.cost());
+            Logger::log("temperature", 0.0);
+            Logger::log("best_cost", best_cost);
+            Logger::log("delta", delta);
+            if (delta > 0)
+            {
+                Logger::log("acceptance_probability", 0.0);
+            }
+            Logger::advance_iteration();
         }
     }
 };
