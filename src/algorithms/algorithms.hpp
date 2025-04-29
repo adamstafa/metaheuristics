@@ -7,6 +7,7 @@
 #include "../logger.hpp"
 #include <cassert>
 #include <cmath>
+#include <chrono>
 
 class BaseAlgorithm
 {
@@ -191,19 +192,25 @@ public:
     RecordToRecord(ProblemReimagined &problem, SolutionManipulator &manipulator, BaseOperator &op)
         : BaseAlgorithm(problem, manipulator, op), best_solution(problem) {}
 
-    void run(int num_iterations) override
+    void run(int total_seconds) override
     {
+        std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
+        auto duration = std::chrono::seconds(0);
         int best_cost = manipulator.solution.cost();
+        double tolerance = 0.01;
 
-        for (int i = 0; i < num_iterations; i++)
+        while (duration < std::chrono::seconds(total_seconds))
         {
+            duration = std::chrono::duration_cast<std::chrono::seconds>(std::chrono::steady_clock::now() - begin);
+            double progress = ((double) duration.count()) / total_seconds;
+
             manipulator.begin();
 
             int old_cost = manipulator.solution.cost();
 
             op.apply();
             int delta = manipulator.solution.cost() - old_cost;
-            double d = 0.05 * (1.0 - ((double) i) / num_iterations) * best_cost;
+            double d = tolerance * (1.0 - progress) * best_cost;
             int acceptance_threshold = best_cost + d;
 
             if (manipulator.solution.cost() < best_cost)

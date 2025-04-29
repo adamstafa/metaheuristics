@@ -19,7 +19,9 @@ private:
 
 public:
     static void log(const std::string& label, double value) {
-        log_entries.push_back({iteration, label, value});
+        // Logging disabled for final submission since it takes too much memory
+        // TODO: write entries to the file and don't store them for the whole duration of the run
+        // log_entries.push_back({iteration, label, value});
     }
 
     static void advance_iteration() {
