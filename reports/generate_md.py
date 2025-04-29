@@ -27,9 +27,10 @@ algorithms = {
     'simulated_annealing_operators_untuned': 'SA -- new operators (equal weights)',
     'simulated_annealing_operators_tuned': 'SA -- new operators (tuned weights)',
     'alns': 'Adaptive Algorithm',
+    'final': 'Final Algorithm',
 }
 
-new_algos = {'alns'}
+new_algos = {'final'}
 
 def parse_run(problem, algo):
     runs = []
@@ -79,7 +80,7 @@ def process_problem(problem, f):
     print(file=f)
 
 with open("output/output.md", "w") as f:
-    print("# INF273 - Assignment 5", file=f)
+    print("# INF273 - Final Submission", file=f)
     print("Adam Štafa", file=f)
     print(file=f)
     for problem in problems:

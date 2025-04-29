@@ -8,13 +8,14 @@ import time
 
 
 class Solver:
-    def __init__(self, data_folder, problem_name, run_id, algorithm):
+    def __init__(self, data_folder, problem_name, run_id, algorithm, duration=10):
         self.problem_name = problem_name
         self.run_id = run_id
         self.problem_path = f'{data_folder}/{problem_name}'
         self.prob = load_problem(self.problem_path)
         self.n_calls = self.prob['n_calls']
         self.n_vehicles = self.prob['n_vehicles']
+        self.duration = duration
         
         self.log_path = f'logs/{algorithm}/{problem_name}/{run_id}.txt'
         self.measurement_path = f'measurements/{problem_name}/{run_id}.csv'
@@ -45,7 +46,7 @@ class Solver:
         # w2 = 0.6
         # w3 = 0.15
         # proc = os.popen(f'{self.solver_path} {self.problem_path} {w1} {w2} {w3}')
-        proc = os.popen(f'{self.solver_path} {self.problem_path} {self.measurement_path}')
+        proc = os.popen(f'{self.solver_path} {self.problem_path} {self.measurement_path} {self.duration}')
         # os.popen(f'mv data.csv {self.measurement_path}') # can't use multi processing
         output = proc.read().strip()
         sol = [ int(x) for x in output[1:-1].split(',') ]
@@ -85,10 +86,19 @@ problems = [
     'Call_300_Vehicle_90.txt'
 ]
 
+durations = {
+    'Call_7_Vehicle_3.txt': 1,
+    'Call_18_Vehicle_5.txt': 1,
+    'Call_35_Vehicle_7.txt': 20,
+    'Call_80_Vehicle_20.txt': 60,
+    'Call_130_Vehicle_40.txt': 120,
+    'Call_300_Vehicle_90.txt': 120
+}
+
 if __name__ == '__main__':
     for problem in problems:
         print(f'{problem}')
         def f(i):
-            Solver('data', problem, i, 'final').run()
+            Solver('data', problem, i, 'final', durations[problem]).run()
         with Pool(10) as p:
             p.map(f, range(10))
