@@ -21,12 +21,12 @@ problems = [
 ]
 
 algorithms = {
-    'random_search': 'Random Search',
-    'local_search': 'Local Search -- 1-insert',
-    'simulated_annealing': 'Simulated Annealing -- 1-insert',
-    'simulated_annealing_operators_untuned': 'SA -- new operators (equal weights)',
-    'simulated_annealing_operators_tuned': 'SA -- new operators (tuned weights)',
-    'alns': 'Adaptive Algorithm',
+    # 'random_search': 'Random Search',
+    # 'local_search': 'Local Search -- 1-insert',
+    # 'simulated_annealing': 'Simulated Annealing -- 1-insert',
+    # 'simulated_annealing_operators_untuned': 'SA -- new operators (equal weights)',
+    # 'simulated_annealing_operators_tuned': 'SA -- new operators (tuned weights)',
+    # 'alns': 'Adaptive Algorithm',
     'final': 'Final Algorithm',
 }
 

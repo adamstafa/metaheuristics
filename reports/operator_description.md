@@ -1,23 +1,10 @@
-## Description of Operators
+## Description of the Algorithm
 
-The operators are taken from the previous assignment.
-They remove 3, 10, 20, or 30 calls at once and reinsert them one by one using the 2-regret heuristic with small probability of selecting a sub-optimal call.
-The insertion cost is determined from all possible options of inserting a call in all vehicles.
-The adaptive heuristic selects both the operator and the number of calls.
+The algorithm is based on the ALNS framework with the record-to-record travel acceptance criterion.
+A new solution is accepted if its cost is less than $z^B + D$ where $z^B$ is the best cost achieved so far and $D = 0.005\frac{T-t}{T}z^B$ where $t$ is the current running time and $T$ is the time limit.
+For the exam run, I will use $D = 0.1\frac{T-t}{T}z^B$ to lower the risk of getting stuck in local optima in the larger instances.
 
-### Operator 1
-
-Removes calls completely randomly.
-We might want to remove every call at some point and using exclusively heuristic approaches could prevent certain calls from being removed.
-
-
-### Operator 2
-
-Removes similar calls according to the similarity score based on relatedness of cargo, time, distance, and compatibility.
-The idea is that the selected calls should be mutually interchangeable and easy to swap.
-
-### Operator 3
-
-Removes calls from vehicles with high number of calls.
-The idea is to free up their schedule so new calls can be inserted in them.
-This should prevent premature convergence and open up options for the other operators.
+The operators used in the algorithm are all reinsertions of up to 40 calls.
+Several heuristics are used to remove the calls: random, similarity score clustering, vehicles with many calls, and calls in expensive positions.
+While the heuristics help a bit, using only the random removal provides very similar results that are only marginally worse.
+The calls are then inserted according to the regret heuristic with a small probability of selecting a suboptimal call.
