@@ -199,8 +199,9 @@ public:
         std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
         auto duration = std::chrono::seconds(0);
         int best_cost = manipulator.solution.cost();
-        // TODO: set to 0.1
-        double tolerance = 0.005;
+
+        double tolerance = 0.1;
+        // double tolerance = 0.005; // better results but could be less robust on the new instances
 
         while (duration < std::chrono::seconds(total_seconds))
         {
@@ -248,5 +249,6 @@ public:
             }
             Logger::advance_iteration();
         }
+        callback();
     }
 };
