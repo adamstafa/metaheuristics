@@ -90,9 +90,9 @@ durations = {
     'Call_7_Vehicle_3.txt': 1,
     'Call_18_Vehicle_5.txt': 1,
     'Call_35_Vehicle_7.txt': 20,
-    'Call_80_Vehicle_20.txt': 60,
-    'Call_130_Vehicle_40.txt': 120,
-    'Call_300_Vehicle_90.txt': 120
+    'Call_80_Vehicle_20.txt': 300,
+    'Call_130_Vehicle_40.txt': 600,
+    'Call_300_Vehicle_90.txt': 600
 }
 
 if __name__ == '__main__':
