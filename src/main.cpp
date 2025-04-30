@@ -38,11 +38,15 @@ AdaptiveRandomChoice get_alns_operator(SolutionManipulator& manipulator)
 
 int main(int argc, char* argv[])
 {
-    std::string log_path = "data.csv";
+    std::string log_path = "";
     int seconds = 5;
-    if (argc == 4) {
-        log_path = argv[2];
-        seconds = std::stoi(argv[3]);
+    if (argc > 2) {
+        seconds = std::stoi(argv[2]);
+    }
+
+    if (argc > 3)
+    {
+        log_path = argv[3];
     }
 
     std::string problem_path = argv[1];
@@ -82,7 +86,10 @@ int main(int argc, char* argv[])
     // std::cout << best_sol.cost() << std::endl;
     std::cout << best_sol.python_string() << std::endl;
 
-    Logger::dump(log_path);
+    if (log_path != "")
+    {
+        Logger::dump(log_path);
+    }
 
     return 0;
 }

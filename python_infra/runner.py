@@ -46,7 +46,7 @@ class Solver:
         # w2 = 0.6
         # w3 = 0.15
         # proc = os.popen(f'{self.solver_path} {self.problem_path} {w1} {w2} {w3}')
-        proc = os.popen(f'{self.solver_path} {self.problem_path} {self.measurement_path} {self.duration}')
+        proc = os.popen(f'{self.solver_path} {self.problem_path} {self.duration} {self.measurement_path}')
         # os.popen(f'mv data.csv {self.measurement_path}') # can't use multi processing
         output = proc.read().strip()
         sol = [ int(x) for x in output[1:-1].split(',') ]
@@ -89,10 +89,10 @@ problems = [
 durations = {
     'Call_7_Vehicle_3.txt': 1,
     'Call_18_Vehicle_5.txt': 1,
-    'Call_35_Vehicle_7.txt': 20,
-    'Call_80_Vehicle_20.txt': 300,
-    'Call_130_Vehicle_40.txt': 600,
-    'Call_300_Vehicle_90.txt': 600
+    'Call_35_Vehicle_7.txt': 10,
+    'Call_80_Vehicle_20.txt': 900,
+    'Call_130_Vehicle_40.txt': 900,
+    'Call_300_Vehicle_90.txt': 900
 }
 
 if __name__ == '__main__':
