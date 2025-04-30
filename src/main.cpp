@@ -20,24 +20,17 @@ AdaptiveRandomChoice get_alns_operator(SolutionManipulator& manipulator)
     std::vector<std::unique_ptr<BaseOperator>> operators;
     operators.emplace_back(std::make_unique<ReinsertRandomRegret>(manipulator, 40));
     operators.emplace_back(std::make_unique<ReinsertRandomRegret>(manipulator, 30));
-    // operators.emplace_back(std::make_unique<ReinsertRandomRegret>(manipulator, 20));
-    // operators.emplace_back(std::make_unique<ReinsertRandomRegret>(manipulator, 10));
+    operators.emplace_back(std::make_unique<ReinsertRandomRegret>(manipulator, 20));
+    operators.emplace_back(std::make_unique<ReinsertRandomRegret>(manipulator, 10));
+    operators.emplace_back(std::make_unique<ReinsertRandomRegret>(manipulator, 5));
+    operators.emplace_back(std::make_unique<ReinsertRandomRegret>(manipulator, 1));
 
-    operators.emplace_back(std::make_unique<ReinsertSimilarRegret>(manipulator, 40));
-    // operators.emplace_back(std::make_unique<ReinsertSimilarRegret>(manipulator, 30));
-    // operators.emplace_back(std::make_unique<ReinsertSimilarRegret>(manipulator, 25));
+    operators.emplace_back(std::make_unique<ReinsertSimilarRegret>(manipulator, 30));
     operators.emplace_back(std::make_unique<ReinsertSimilarRegret>(manipulator, 20));
-    // operators.emplace_back(std::make_unique<ReinsertSimilarRegret>(manipulator, 15));
-    operators.emplace_back(std::make_unique<ReinsertSimilarRegret>(manipulator, 10));
-    // operators.emplace_back(std::make_unique<ReinsertSimilarRegret>(manipulator, 5));
-
-    // operators.emplace_back(std::make_unique<ReinsertFullRegret>(manipulator, 30));
+    
     operators.emplace_back(std::make_unique<ReinsertFullRegret>(manipulator, 20));
-    // operators.emplace_back(std::make_unique<ReinsertFullRegret>(manipulator, 10));
 
-    // operators.emplace_back(std::make_unique<ReinsertExpensiveRegret>(manipulator, 30));
-    // operators.emplace_back(std::make_unique<ReinsertExpensiveRegret>(manipulator, 20));
-    // operators.emplace_back(std::make_unique<ReinsertExpensiveRegret>(manipulator, 10));
+    operators.emplace_back(std::make_unique<ReinsertExpensiveRegret>(manipulator, 20));
 
     AdaptiveRandomChoice op(manipulator, std::move(operators));
     return op;
@@ -79,7 +72,7 @@ int main(int argc, char* argv[])
     // SimulatedAnnealing algo(problem, manipulator, alns_operator, 100);
     // algo.run(10000);
 
-    RecordToRecord algo(problem, manipulator, alns_operator);
+    RecordToRecord algo(problem, manipulator, alns_operator, [&]() { std::cerr << problem_path << ": " <<  algo.best_solution.cost() << std::endl; });
     algo.run(seconds);
 
     auto best_sol = algo.best_solution;

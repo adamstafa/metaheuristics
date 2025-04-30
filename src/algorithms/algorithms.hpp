@@ -188,16 +188,19 @@ class RecordToRecord : BaseAlgorithm
 {
 public:
     Solution best_solution;
+    std::function<void()> callback;
+    int last_callback_minute = 0;
 
-    RecordToRecord(ProblemReimagined &problem, SolutionManipulator &manipulator, BaseOperator &op)
-        : BaseAlgorithm(problem, manipulator, op), best_solution(problem) {}
+    RecordToRecord(ProblemReimagined &problem, SolutionManipulator &manipulator, BaseOperator &op, std::function<void()> callback = nullptr)
+        : BaseAlgorithm(problem, manipulator, op), best_solution(problem), callback(callback) {}
 
     void run(int total_seconds) override
     {
         std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
         auto duration = std::chrono::seconds(0);
         int best_cost = manipulator.solution.cost();
-        double tolerance = 0.01;
+        // TODO: set to 0.1
+        double tolerance = 0.005;
 
         while (duration < std::chrono::seconds(total_seconds))
         {
@@ -227,8 +230,14 @@ public:
             {
                 manipulator.rollback();
             }
-            
-            
+
+            int minute = duration.count() / 60;
+            if (minute > last_callback_minute)
+            {
+                last_callback_minute = minute;
+                callback();
+            }
+
             Logger::log("cost", manipulator.solution.cost());
             Logger::log("temperature", 0.0);
             Logger::log("best_cost", best_cost);
